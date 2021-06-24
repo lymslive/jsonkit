@@ -10,7 +10,7 @@
 namespace jsonkit
 {
 
-// print json in pretty or condensed style
+// print json in pretty or condensed format
 bool prettify(const rapidjson::Value& inJson, std::string& outJson);
 bool condense(const rapidjson::Value& inJson, std::string& outJson);
 
@@ -20,7 +20,8 @@ bool form_schema(const rapidjson::Value& inJson, rapidjson::Document& outSchema)
 bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson);
 
 // validate the json according to schema
-bool validate_schema(const rapidjson::Value& inJson, rapidjson::Document& inSchema);
+bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema);
+bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema, const std::string& basedir);
 
 // some like strcmp() that return 0 or 1 or -1, but perform on two json values.
 int compare(const rapidjson::Value& aJson, const rapidjson::Value& bJson);

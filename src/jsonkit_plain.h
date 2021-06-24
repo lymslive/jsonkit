@@ -11,7 +11,7 @@
 namespace jsonkit
 {
 
-// print json in pretty or condensed style
+// print json in pretty or condensed format
 bool prettify(const std::string& inJson, std::string& outJson);
 bool condense(const std::string& inJson, std::string& outJson);
 bool prettify(const char* inJson, size_t inLen, std::string& outJson);
@@ -25,7 +25,13 @@ bool form_schema(const char* inJson, size_t inLen, std::string& outSchema);
 bool from_schema(const char* inSchema, size_t inLen, std::string& outJson);
 
 // validate the json according to schema
-bool validate_schema(const std::string& inJson, std::string& inSchema);
+// inJson: josn string 
+// inSchema: josn string that serve as schema
+// basedir: is for remote reference
+// inFile: read schema from a json file, and remote schema refer to its basedir
+bool validate_schema(const std::string& inJson, const std::string& inSchema);
+bool validate_schema(const std::string& inJson, const std::string& inSchema, const std::string& basedir);
+bool validate_schema_file(const std::string& inJson, const std::string& inFile);
 
 // some like strcmp() that return 0 or 1 or -1, but perform on two json values.
 int compare(const std::string& aJson, const std::string& bJson);
