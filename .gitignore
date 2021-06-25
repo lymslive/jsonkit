@@ -2,5 +2,6 @@
 *.o
 *.out
 *.bak
+build
 tast.cout*
 Session*.vim
