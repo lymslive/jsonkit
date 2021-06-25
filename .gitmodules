@@ -1,3 +1,6 @@
 [submodule "thirdparty/couttast"]
 	path = thirdparty/couttast
 	url = https://github.com/lymslive/couttast.git
+[submodule "thirdparty/rapidjson"]
+	path = thirdparty/rapidjson
+	url = git@github.com:Tencent/rapidjson.git
