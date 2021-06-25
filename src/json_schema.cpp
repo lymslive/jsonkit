@@ -19,8 +19,15 @@ namespace impl
 namespace jsonkit
 {
 
-bool form_schema(const rapidjson::Value& inJson, rapidjson::Document& outSchema);
-bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson);
+bool form_schema(const rapidjson::Value& inJson, rapidjson::Document& outSchema)
+{
+	return false;
+}
+
+bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson)
+{
+	return false;
+}
 
 // do not support remote schema (IRemoteSchemaDocumentProvider)
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema)
