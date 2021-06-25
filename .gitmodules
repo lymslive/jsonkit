@@ -1,0 +1,3 @@
+[submodule "thirdparty/couttast"]
+	path = thirdparty/couttast
+	url = https://github.com/lymslive/couttast.git
