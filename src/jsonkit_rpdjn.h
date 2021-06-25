@@ -1,9 +1,10 @@
-#ifndef JSONKIT_PLAIN_H__
-#define JSONKIT_PLAIN_H__
+#ifndef JSONKIT_RPDJN_H__
+#define JSONKIT_RPDJN_H__
 
 #include "rapidjson/document.h"
 
 #include "jsonkit_plain.h"
+#include "use_rapidjson.h"
 
 // Interface by rapidjson library, where input is rapidjson::Value, or
 // rapidjson::Document in some case.
@@ -39,4 +40,4 @@ bool from_protobuf(const std::string& name, const rapidjson::Value& inPbmsg, std
 
 } /* jsonkit */ 
 
-#endif /* end of include guard: JSONKIT_PLAIN_H__ */
+#endif /* end of include guard: JSONKIT_RPDJN_H__ */

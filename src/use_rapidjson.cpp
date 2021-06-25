@@ -2,6 +2,11 @@
 
 #include <fstream>
 
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/istreamwrapper.h"
+#include "rapidjson/ostreamwrapper.h"
+#include "rapidjson/error/en.h"
+
 namespace jsonkit
 {
     

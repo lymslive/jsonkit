@@ -3,8 +3,6 @@
 #include "use_rapidjson.h"
 
 #include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/ostreamwrapper.h"
 
 #include <sstream>
 
@@ -25,7 +23,6 @@ bool condense(const rapidjson::Value& inJson, std::string& outJson)
     std::stringstream oss;
     write_stream(inJson, oss, false);
     outJson = oss.str();
-    return true;
     return true;
 }
 

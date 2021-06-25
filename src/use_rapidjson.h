@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 
+#include "rapidjson/document.h"
+
 namespace jsonkit
 {
     
