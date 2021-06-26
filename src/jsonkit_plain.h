@@ -28,10 +28,11 @@ bool from_schema(const char* inSchema, size_t inLen, std::string& outJson);
 // inJson: josn string 
 // inSchema: josn string that serve as schema
 // basedir: is for remote reference
-// inFile: read schema from a json file, and remote schema refer to its basedir
+// inSchemaFile: read schema from a json file, and remote schema refer to its basedir
+// Note: not provide (char* and length) argument, as to many input arguments
 bool validate_schema(const std::string& inJson, const std::string& inSchema);
 bool validate_schema(const std::string& inJson, const std::string& inSchema, const std::string& basedir);
-bool validate_schema_file(const std::string& inJson, const std::string& inFile);
+bool validate_schema_file(const std::string& inJson, const std::string& inSchemaFile);
 
 // some like strcmp() that return 0 or 1 or -1, but perform on two json values.
 int compare(const std::string& aJson, const std::string& bJson);

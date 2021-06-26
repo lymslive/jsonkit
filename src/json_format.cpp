@@ -26,27 +26,7 @@ bool condense(const rapidjson::Value& inJson, std::string& outJson)
     return true;
 }
 
-bool prettify(const std::string& inJson, std::string& outJson)
-{
-    rapidjson::Document doc;
-    doc.Parse(inJson.c_str(), inJson.size());
-    if (doc.HasParseError())
-    {
-        return false;
-    }
-    return prettify(doc, outJson);
-}
-
-bool condense(const std::string& inJson, std::string& outJson)
-{
-    rapidjson::Document doc;
-    doc.Parse(inJson.c_str(), inJson.size());
-    if (doc.HasParseError())
-    {
-        return false;
-    }
-    return condense(doc, outJson);
-}
+/* -------------------------------------------------- */
 
 bool prettify(const char* inJson, size_t inLen, std::string& outJson)
 {
@@ -68,6 +48,18 @@ bool condense(const char* inJson, size_t inLen, std::string& outJson)
         return false;
     }
     return condense(doc, outJson);
+}
+
+/* -------------------------------------------------- */
+
+bool prettify(const std::string& inJson, std::string& outJson)
+{
+    return prettify(inJson.c_str(), inJson.size(), outJson);
+}
+
+bool condense(const std::string& inJson, std::string& outJson)
+{
+    return condense(inJson.c_str(), inJson.size(), outJson);
 }
 
 } /* jsonkit */ 

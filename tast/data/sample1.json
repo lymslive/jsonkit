@@ -1,0 +1,37 @@
+{
+    "aaa": 1,
+    "bbb": 1.0,
+    "ccc": true,
+    "ddd": "word",
+    "AAA": [1, 2, 3],
+    "BBB": [1.0, 2.0, 3.0],
+    "CCC": [true, false, true],
+    "DDD": ["true", "false", "true"],
+    "hhh": {
+        "aaa": 1,
+        "AAA": [1, 2, 3]
+    },
+    "iii": {
+        "bbb": 1.0,
+        "BBB": [1.0, 2.0, 3.0]
+    },
+    "HHH": [
+        {
+            "aaa": 1,
+            "bbb": 1.0,
+            "ccc": true,
+            "ddd": "word"
+        },
+        {
+            "aaa": 2,
+            "bbb": 2.0,
+            "ccc": false,
+            "ddd": "Word"
+        }
+    ],
+    "III": [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9]
+    ]
+}

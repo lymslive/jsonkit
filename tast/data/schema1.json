@@ -1,0 +1,77 @@
+{
+    "description": "test schema coordinate to sample1.json",
+    "type": "object",
+    "properties": {
+        "aaa": {"type": "integer"},
+        "bbb": {"type": "number"},
+        "ccc": {"type": "boolean"},
+        "ddd": {"type": "string"},
+        "AAA": {
+            "type": "array",
+            "items": {"type": "integer"}
+        },
+        "BBB": {
+            "type": "array",
+            "items": {"type": "number"}
+        },
+        "CCC": {
+            "type": "array",
+            "items": {"type": "boolean"}
+        },
+        "DDD": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
+        "hhh": {
+            "type": "object",
+            "properties": {
+                "aaa": {"type": "integer"},
+                "AAA": {
+                    "type": "array",
+                    "items": {"type": "integer"}
+                }
+            },
+            "required": ["aaa", "AAA"]
+        },
+        "iii": {
+            "type": "object",
+            "properties": {
+                "bbb": {"type": "number"},
+                "BBB": {
+                    "type": "array",
+                    "items": {"type": "number"}
+                }
+            },
+            "required": ["bbb", "BBB"]
+        },
+        "HHH": {
+            "description": "array of object", 
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "aaa": {"type": "integer"},
+                    "bbb": {"type": "number"},
+                    "ccc": {"type": "boolean"},
+                    "ddd": {"type": "string"}
+                },
+                "required": ["aaa", "bbb", "ccc", "ddd"]
+            }
+        },
+        "III": {
+            "description": "array of array of int: martix", 
+            "type": "array",
+            "items": {
+                "type": "array",
+                "itmes": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "required": [
+        "aaa", "bbb", "ccc", "ddd",
+        "AAA", "BBB", "CCC", "DDD",
+        "hhh", "iii", "HHH", "III"
+    ]
+}
