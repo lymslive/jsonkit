@@ -1,11 +1,18 @@
 .PHONY : all tast header libdir tastdir echo clean tast.run
 
 RAPIDJON = ../thirdparty/rapidjson/include
-COUTAST  = ../thirdparty/couttast/src/
+COUTAST  = ../thirdparty/couttast/include
 INCLUDE = -I./include -I$(RAPIDJON) -I$(COUTAST)
 
+AR = ar -crs
 CXX = g++
 CXXFLAGS = -fPIC
+
+ifdef debug
+	CXXFLAGS += -g -D_DEBUG
+else
+	CXXFLAGS += -O2
+endif
 
 # for lib target
 ##################################################
@@ -24,7 +31,7 @@ TARGET = lib/libjsonkit.a
 all: libdir $(TARGET) header
 
 $(TARGET) : $(JSONKIT_OBJ)
-	ar -crs $(TARGET) $(JSONKIT_OBJ)
+	$(AR) $(TARGET) $(JSONKIT_OBJ)
 
 $(JSONKIT_OBJ): $(JSONKIT_OBJ_DIR)/%.o : $(JSONKIT_SRC_DIR)/%.cpp
 	$(CXX) -c $(CXXFLAGS) $(INCLUDE) -o $@ $<
@@ -54,7 +61,7 @@ TAST_RUN_DIR = ../tast
 TAST_TARGET = bin/tast_jsonkit.exe
 tast: tastdir $(TAST_TARGET)
 $(TAST_TARGET) : $(TAST_OBJ)
-	$(CXX) -o $(TAST_TARGET) $(TAST_OBJ) $(LIBRARY)
+	$(CXX) -o $(TAST_TARGET) $(CXXFLAGS) $(TAST_OBJ) $(LIBRARY)
 	cp -u $(TAST_TARGET) $(TAST_RUN_DIR)/
 
 $(TAST_OBJ): $(TAST_OBJ_DIR)/%.o : $(TAST_SRC_DIR)/%.cpp
