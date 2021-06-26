@@ -1,4 +1,4 @@
-.PHONY : all tast header libdir tastdir echo clean
+.PHONY : all tast header libdir tastdir echo clean tast.run
 
 RAPIDJON = ../thirdparty/rapidjson/include
 COUTAST  = ../thirdparty/couttast/src/
@@ -50,10 +50,12 @@ TAST_OBJ = $(addprefix $(TAST_OBJ_DIR)/, $(TAST_OBJ_NODIR))
 
 LIBRARY = -L./lib -ljsonkit
 
+TAST_RUN_DIR = ../tast
 TAST_TARGET = bin/tast_jsonkit.exe
 tast: tastdir $(TAST_TARGET)
 $(TAST_TARGET) : $(TAST_OBJ)
 	$(CXX) -o $(TAST_TARGET) $(TAST_OBJ) $(LIBRARY)
+	cp -u $(TAST_TARGET) $(TAST_RUN_DIR)/
 
 $(TAST_OBJ): $(TAST_OBJ_DIR)/%.o : $(TAST_SRC_DIR)/%.cpp
 	$(CXX) -c $(CXXFLAGS) $(INCLUDE) -o $@ $<
@@ -61,8 +63,9 @@ $(TAST_OBJ): $(TAST_OBJ_DIR)/%.o : $(TAST_SRC_DIR)/%.cpp
 tastdir:
 	@mkdir -p bin
 	@mkdir -p tast
-	@#-ln -s ../tast/data 
 	
+tast.run:
+	./run_tast.sh
 
 # 
 ##################################################
