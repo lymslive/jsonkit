@@ -1,6 +1,7 @@
 #include "jsonkit_plain.h"
 #include "jsonkit_rpdjn.h"
 #include "CJsonSchema.h"
+#include "jsonkit_internal.h"
 
 #include "rapidjson/document.h"
 #include "rapidjson/schema.h"
@@ -120,11 +121,6 @@ bool generate_json_internal(const Value& valSchema, Value& valJson, Document::Al
 
 bool generate_json_object(const Value& valSchema, Value& valJson, Document::AllocatorType& allocator)
 {
-    if (!valSchema.IsObject())
-    {
-        return false;
-    }
-
     Value::ConstMemberIterator itField = valSchema.MemberBegin();
     for (; itField != valSchema.MemberEnd(); ++itField)
     {
@@ -146,11 +142,6 @@ bool generate_json_object(const Value& valSchema, Value& valJson, Document::Allo
 // only support array schema with the same type for each item
 bool generate_json_array(const Value& valSchema, Value& valJson, Document::AllocatorType& allocator)
 {
-    if (!valSchema.IsObject())
-    {
-        return false;
-    }
-
     Value valItem;
     if (generate_json_internal(valSchema, valItem, allocator))
     {
@@ -164,6 +155,7 @@ bool generate_json_internal(const Value& valSchema, Value& valJson, Document::Al
 {
     if (!valSchema.IsObject())
     {
+        LOGF("error: schema must be object.");
         return false;
     }
     

@@ -1,5 +1,6 @@
 #include "CJsonSchema.h"
 #include "use_rapidjson.h"
+#include "jsonkit_internal.h"
 
 #include <string>
 #include <map>
@@ -70,41 +71,41 @@ bool break_string(std::string& source, const char* any, std::string& rest)
 
 const rapidjson::SchemaDocument* CSchemaProvider::GetRemoteDocument(const char* uri, rapidjson::SizeType length)
 {
-	// fprintf(stderr, "Try to get remote schema refer: %s\n", uri);
-	std::string uriKey(uri);
-	std::string jsonPath;
-	break_string(uriKey, "#", jsonPath);
+    LOGD("Try to get remote schema refer: %s", uri);
+    std::string uriKey(uri);
+    std::string jsonPath;
+    break_string(uriKey, "#", jsonPath);
 
-	auto it = m_mapSchema.find(uriKey);
-	if (it != m_mapSchema.end())
-	{
-		// fprintf(stderr, "Get the cached schema!\n");
-		return it->second;
-	}
+    auto it = m_mapSchema.find(uriKey);
+    if (it != m_mapSchema.end())
+    {
+        LOGD("Get the cached schema!");
+        return it->second;
+    }
 
-	std::string jsonFile = m_baseDir;
+    std::string jsonFile = m_baseDir;
     jsonFile.append(uriKey);
 
-	rapidjson::Document docSchema;
+    rapidjson::Document docSchema;
     if (!jsonkit::read_file(docSchema, jsonFile))
-	{
-		fprintf(stderr, "Fail to read schema json file: %s\n", jsonFile.c_str());
-		return NULL;
-	}
+    {
+        LOGF("Fail to read schema json file: %s", jsonFile.c_str());
+        return NULL;
+    }
 
-	// the required is the whole SchemaDocument, not further parse #path or #id self.
-	rapidjson::SchemaDocument* pSchema = new rapidjson::SchemaDocument(docSchema);
-	if (pSchema != NULL)
-	{
-		m_mapSchema[uriKey] = pSchema;
-		// fprintf(stderr, "Save cache for schema json file: %s\n", uriKey.c_str());
-	}
-	else
-	{
-		fprintf(stderr, "Fail to create new rapidjson::SchemaDocument\n");
-	}
+    // the required is the whole SchemaDocument, not further parse #path or #id self.
+    rapidjson::SchemaDocument* pSchema = new rapidjson::SchemaDocument(docSchema);
+    if (pSchema != NULL)
+    {
+        m_mapSchema[uriKey] = pSchema;
+        LOGD("Save cache for schema json file: %s", uriKey.c_str());
+    }
+    else
+    {
+        LOGF("Fail to create new rapidjson::SchemaDocument");
+    }
 
-	return pSchema;
+    return pSchema;
 }
 
 } // end of namespace jsonkit::CSchemaProvider
@@ -139,6 +140,7 @@ bool CJsonSchema::Validate(const rapidjson::Value& json)
 {
     std::string strError;
     bool bRet = Validate(json, strError);
+    LOGS(strError);
     return bRet;
 }
 
