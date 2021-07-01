@@ -4,7 +4,11 @@
 namespace jsonkit
 {
 
+#ifdef _DEBUG
 FILE* g_default_file = stderr;
+#else
+FILE* g_default_file = NULL;
+#endif
 
 FILE* set_logreport(FILE* fp)
 {

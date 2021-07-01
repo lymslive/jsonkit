@@ -60,7 +60,7 @@ LIBRARY = -L./lib -ljsonkit
 TAST_RUN_DIR = ../tast
 TAST_TARGET = bin/tast_jsonkit.exe
 tast: tastdir $(TAST_TARGET)
-$(TAST_TARGET) : $(TAST_OBJ)
+$(TAST_TARGET) : $(TAST_OBJ) $(TARGET) 
 	$(CXX) -o $(TAST_TARGET) $(CXXFLAGS) $(TAST_OBJ) $(LIBRARY)
 	cp -u $(TAST_TARGET) $(TAST_RUN_DIR)/
 

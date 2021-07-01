@@ -140,7 +140,10 @@ bool CJsonSchema::Validate(const rapidjson::Value& json)
 {
     std::string strError;
     bool bRet = Validate(json, strError);
-    LOGS(strError);
+    if (!strError.empty())
+    {
+        LOGS(strError);
+    }
     return bRet;
 }
 

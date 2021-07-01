@@ -5,4 +5,4 @@ TAST_RUN_DIR=../tast
 TAST_EXE=tast_jsonkit.exe
 
 cd $TAST_RUN_DIR
-./$TAST_EXE
+./$TAST_EXE $@

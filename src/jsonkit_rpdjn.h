@@ -24,8 +24,10 @@ bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson)
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema);
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema, const std::string& basedir);
 
-// some like strcmp() that return 0 or 1 or -1, but perform on two json values.
-int compare(const rapidjson::Value& aJson, const rapidjson::Value& bJson);
+// return true if two json is equal in type and field/itme recursively
+bool compare(const rapidjson::Value& aJson, const rapidjson::Value& bJson);
+// return ture if a >= b, a could has more field/item than b in object/array
+bool compatible(const rapidjson::Value& aJson, const rapidjson::Value& bJson);
 
 // get one sub-node from json by pointer path
 // return the json value pointer or NULL on failure.

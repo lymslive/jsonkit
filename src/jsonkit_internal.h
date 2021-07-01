@@ -20,8 +20,11 @@ void log_printf(LOCATION_PAR, const char* format, ...);
 #define LOGS(str) jsonkit::log_report(LOCATION_SRC, str.c_str(), str.size())
 
 #ifdef _DEBUG
-#endif
 #define LOGD(format, ...) jsonkit::log_printf(LOCATION_SRC, format, ## __VA_ARGS__)
+#else
+#define LOGD(format, ...)
+#endif
+
 #endif
 
 #endif /* end of include guard: JSONKIT_INTERNAL_H__ */

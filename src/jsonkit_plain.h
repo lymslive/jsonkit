@@ -34,8 +34,10 @@ bool validate_schema(const std::string& inJson, const std::string& inSchema);
 bool validate_schema(const std::string& inJson, const std::string& inSchema, const std::string& basedir);
 bool validate_schema_file(const std::string& inJson, const std::string& inSchemaFile);
 
-// some like strcmp() that return 0 or 1 or -1, but perform on two json values.
-int compare(const std::string& aJson, const std::string& bJson);
+// return true if two json is equal in type and field/itme recursively
+bool compare(const std::string& aJson, const std::string& bJson);
+// return ture if a >= b, a could has more field/item than b in object/array
+bool compatible(const std::string& aJson, const std::string& bJson);
 
 // get one sub-node from json by pointer path
 bool point(const std::string& inJson, const std::string& path, std::string& outJson);
