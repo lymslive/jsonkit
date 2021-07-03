@@ -7,6 +7,20 @@
 #include <cmath>
 #include <limits>
 
+#if __cplusplus < 201103L
+#include <sstream>
+namespace std
+{
+template <typename valueT>
+string to_string(const valueT& val)
+{
+	ostringstream sout;
+	sout << val;
+	return sout.str();
+}
+}
+#endif
+
 namespace jsonkit
 {
 namespace impl
@@ -90,26 +104,18 @@ int CompareJsonImpl(const rapidjson::Value& av, const rapidjson::Value& bv, bool
         if (!bCanLess)
         {
             ASSERT_CMP(av.MemberCount() == bv.MemberCount(), msg.PutValue("{n}", "{m}").SetFail());
-            for (rapidjson::Value::ConstMemberIterator ai = av.MemberBegin(), bi = bv.MemberBegin(); ai != av.MemberEnd(); ++ai, ++bi)
-            {
-                std::string aName = ai->name.GetString();
-                std::string bName = bi->name.GetString();
-                ASSERT_CMP(aName == bName, msg.PutValue("->" + aName, "->" + bName).SetFail());
-                int iRet = CompareJsonImpl(ai->value, bi->value, bCanLess, apath + "/" + aName, bpath + "/" + bName);
-                RETURN_ONERR(iRet);
-            }
         }
         else
         {
             ASSERT_CMP(av.MemberCount() <= bv.MemberCount(), msg.PutValue("{n}", "{<n}").SetFail());
-            for (rapidjson::Value::ConstMemberIterator ai = av.MemberBegin(); ai != av.MemberEnd(); ++ai)
-            {
-                std::string aName = ai->name.GetString();
-                rapidjson::Value::ConstMemberIterator bi = bv.FindMember(ai->name.GetString());
-                ASSERT_CMP(bi != bv.MemberEnd(), msg.PutValue("->" + aName, "->").SetFail());
-                int iRet = CompareJsonImpl(ai->value, bi->value, bCanLess, apath + "/" + aName, bpath + "/" + aName);
-                RETURN_ONERR(iRet);
-            }
+        }
+        for (rapidjson::Value::ConstMemberIterator ai = av.MemberBegin(); ai != av.MemberEnd(); ++ai)
+        {
+            std::string aName = ai->name.GetString();
+            rapidjson::Value::ConstMemberIterator bi = bv.FindMember(ai->name.GetString());
+            ASSERT_CMP(bi != bv.MemberEnd(), msg.PutValue("->" + aName, "->").SetFail());
+            int iRet = CompareJsonImpl(ai->value, bi->value, bCanLess, apath + "/" + aName, bpath + "/" + aName);
+            RETURN_ONERR(iRet);
         }
     }
     else if (av.IsArray())

@@ -1,4 +1,5 @@
 #include "use_rapidjson.h"
+#include "jsonkit_internal.h"
 
 #include <fstream>
 
@@ -16,7 +17,7 @@ bool read_stream(rapidjson::Document& doc, std::istream& stream)
     doc.ParseStream(is);
     if (doc.HasParseError())
     {
-        fprintf(stderr, "Error(offset %u): %s\n",
+        LOGF("Parse Json Error(offset %u): %s",
                 static_cast<unsigned>(doc.GetErrorOffset()),
                 GetParseError_En(doc.GetParseError()));
         return false;
@@ -26,7 +27,7 @@ bool read_stream(rapidjson::Document& doc, std::istream& stream)
 
 bool read_file(rapidjson::Document& doc, const std::string& file)
 {
-    std::ifstream ifs(file);
+    std::ifstream ifs(file.c_str());
     if (!ifs.is_open())
     {
         return false;
@@ -57,13 +58,13 @@ bool write_stream(const rapidjson::Value& doc, std::ostream& stream, bool pretty
 
 bool write_file(const rapidjson::Value& doc, const std::string& file, bool pretty)
 {
-    std::ofstream ofs(file);
+    std::ofstream ofs(file.c_str());
     if (!ofs.is_open())
     {
         return false;
     }
 
-    bool bRet = write_stream(doc, ofs);
+    bool bRet = write_stream(doc, ofs, pretty);
     ofs.close();
     return bRet;
 }

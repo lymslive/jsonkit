@@ -2,6 +2,7 @@
 #include "use_rapidjson.h"
 #include "jsonkit_internal.h"
 
+#include <stdio.h>
 #include <string>
 #include <map>
 
@@ -76,7 +77,8 @@ const rapidjson::SchemaDocument* CSchemaProvider::GetRemoteDocument(const char* 
     std::string jsonPath;
     break_string(uriKey, "#", jsonPath);
 
-    auto it = m_mapSchema.find(uriKey);
+    std::map<std::string, rapidjson::SchemaDocument*>::iterator it;
+    it = m_mapSchema.find(uriKey);
     if (it != m_mapSchema.end())
     {
         LOGD("Get the cached schema!");
