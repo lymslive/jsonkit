@@ -3,7 +3,6 @@
 
 #include "rapidjson/document.h"
 
-#include "jsonkit_plain.h"
 #include "use_rapidjson.h"
 
 // Interface by rapidjson library, where input is rapidjson::Value, or
@@ -31,7 +30,7 @@ bool compatible(const rapidjson::Value& aJson, const rapidjson::Value& bJson);
 
 // get one sub-node from json by pointer path
 // return the json value pointer or NULL on failure.
-rapidjson::Value* point(const rapidjson::Value& inJson, const std::string& path);
+const rapidjson::Value* point(const rapidjson::Value& inJson, const std::string& path);
 
 #ifdef HAS_GOOGLE_PROBUF
 // convert between json and protobuf
