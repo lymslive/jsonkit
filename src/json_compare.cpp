@@ -1,3 +1,9 @@
+/** 
+ * @file json_compare.cpp
+ * @author lymslive
+ * @date 2021-10-27
+ * @brief implementation for json compare
+ * */
 #include "jsonkit_plain.h"
 #include "jsonkit_rpdjn.h"
 #include "jsonkit_internal.h"

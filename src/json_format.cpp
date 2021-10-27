@@ -1,3 +1,9 @@
+/** 
+ * @file json_format.cpp 
+ * @author lymslive 
+ * @date 2021-10-27
+ * @brief implementation for json format
+ * */
 #include "jsonkit_plain.h"
 #include "jsonkit_rpdjn.h"
 #include "use_rapidjson.h"

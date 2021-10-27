@@ -1,3 +1,9 @@
+/** 
+ * @file json_schema.cpp 
+ * @author lymslive 
+ * @date 2021-10-27
+ * @brief implementation for json scheam tools
+ * */
 #include "jsonkit_plain.h"
 #include "jsonkit_rpdjn.h"
 #include "CJsonSchema.h"

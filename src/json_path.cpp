@@ -1,3 +1,9 @@
+/** 
+ * @file json_path.cpp
+ * @author lymslive
+ * @date 2021-10-27
+ * @brief json pointer path related uitlity.
+ * */
 #include "jsonkit_plain.h"
 #include "jsonkit_rpdjn.h"
 

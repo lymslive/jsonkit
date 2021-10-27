@@ -1,3 +1,9 @@
+/** 
+ * @file CJsonSchema.h
+ * @author lymslive
+ * @date 2021-10-27 
+ * @brief provid basic json schema support class from rapidjson
+ * */
 #ifndef CJSONSCHEMA_H__
 #define CJSONSCHEMA_H__
 
@@ -7,18 +13,24 @@
 namespace jsonkit
 {
 
+/// json schema support
 class CJsonSchema
 {
 public:
-    // explict pass custome provider create by new, 
-    // it's ownership move to this and delete on destroy
-    // can ommit if no need to use provider (schema $ref)
+    /** constructor with explict IRemoteSchemaDocumentProvider
+     * @param doc
+     * @param provider
+     * @note 
+     * The passed custome provider, it's ownership move to this and delete on destroy.
+     * Can ommit if no need to use provider (schema $ref)
+     * */
     CJsonSchema(const rapidjson::Document& doc, rapidjson::IRemoteSchemaDocumentProvider* provider = NULL);
-    // pass base directory to use local schema provider internlly
+
+    /// pass base directory to use local schema provider internlly
     CJsonSchema(const rapidjson::Document& doc, const std::string& baseDir);
     ~CJsonSchema();
 
-    // validate json against this schema, may pass out error string
+    /// validate json against this schema, may pass out error string
     bool Validate(const rapidjson::Value& json);
     bool Validate(const rapidjson::Value& json, std::string& strError);
 
