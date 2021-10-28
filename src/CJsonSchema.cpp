@@ -1,3 +1,9 @@
+/** 
+ * @file CJsonSchema.cpp
+ * @author lymslive
+ * @date 2021-10-27 
+ * @brief provid basic json schema support class from rapidjson
+ * */
 #include "CJsonSchema.h"
 #include "use_rapidjson.h"
 #include "jsonkit_internal.h"

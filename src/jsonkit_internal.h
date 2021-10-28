@@ -1,3 +1,9 @@
+/** 
+ * @file jsonkit_internal.h
+ * @author lymslive
+ * @date 2021-10-27 
+ * @brief internal use for log and/or debug functions and macros
+ * */
 #ifndef JSONKIT_INTERNAL_H__
 #define JSONKIT_INTERNAL_H__
 

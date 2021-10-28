@@ -1,3 +1,9 @@
+/** 
+ * @file jsonkit_logrept.cpp 
+ * @author lymslive
+ * @date 2021-10-27 
+ * @brief implementation for simply customizable log functionaliy.
+ * */
 #include "jsonkit_config.h"
 #include <stdarg.h>
 

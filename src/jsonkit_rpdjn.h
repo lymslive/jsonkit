@@ -1,3 +1,11 @@
+/** 
+ * @file jsonkit_plain.h 
+ * @author lymslive
+ * @date 2021-10-27 
+ * @details 
+ * Interface by rapidjson library, where input is rapidjson::Value, or
+ * rapidjson::Document in some case.
+ * */
 #ifndef JSONKIT_RPDJN_H__
 #define JSONKIT_RPDJN_H__
 
@@ -5,12 +13,10 @@
 
 #include "use_rapidjson.h"
 
-// Interface by rapidjson library, where input is rapidjson::Value, or
-// rapidjson::Document in some case.
 namespace jsonkit
 {
 
-// print json in pretty or condensed format
+/// print json in pretty or condensed one-line format
 bool prettify(const rapidjson::Value& inJson, std::string& outJson);
 bool condense(const rapidjson::Value& inJson, std::string& outJson);
 
@@ -28,22 +34,33 @@ std::string stringfy(const rapidjson::Value& json)
     return dest;
 }
 
-// generate schema from sample json and generate sample json from schema,
-// these two operation may not be reversiable.
+/** generate schema from sample json and generate sample json from schema.
+ * @note these two operation may not be reversiable.
+ * */
 bool form_schema(const rapidjson::Value& inJson, rapidjson::Document& outSchema);
 bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson);
 
-// validate the json according to schema
+/** validate the json according to schema
+ * @param inJson: josn value 
+ * @param inSchema: josn document as schema
+ * @param basedir: is for remote reference in schema
+ * @return bool
+ * @retval true valid json agaist the schema
+ * @retval false not valid
+ * */
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema);
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema, const std::string& basedir);
 
-// return true if two json is equal in type and field/itme recursively
+/// return true if two json is equal in type and field/itme recursively
 bool compare(const rapidjson::Value& aJson, const rapidjson::Value& bJson);
-// return ture if a >= b, a could has more field/item than b in object/array
+/// return ture if a >= b, a could has more field/item than b in object/array
 bool compatible(const rapidjson::Value& aJson, const rapidjson::Value& bJson);
 
-// get one sub-node from json by pointer path
-// return the json value pointer or NULL on failure.
+/** get one sub-node from json by pointer path 
+ * @param inJson: a json value
+ * @param path: path in json dmo based from inJson
+ * @return pointer to the sub-node, for null on failure
+ * */
 const rapidjson::Value* point(const rapidjson::Value& inJson, const std::string& path);
 
 #ifdef HAS_GOOGLE_PROBUF
