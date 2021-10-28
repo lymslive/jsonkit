@@ -9,9 +9,9 @@ CXX = g++
 CXXFLAGS = -fPIC
 
 ifdef debug
-	CXXFLAGS += -g -D_DEBUG
+CXXFLAGS += -g -D_DEBUG
 else
-	CXXFLAGS += -O2
+CXXFLAGS += -O2
 endif
 
 # for lib target

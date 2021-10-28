@@ -2,7 +2,6 @@
 #include "jsonkit_internal.h"
 
 #include <fstream>
-#include <algorithm>
 
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/istreamwrapper.h"
@@ -68,81 +67,6 @@ bool write_file(const rapidjson::Value& doc, const std::string& file, bool prett
     bool bRet = write_stream(doc, ofs, pretty);
     ofs.close();
     return bRet;
-}
-
-/**************************************************************/
-
-bool scalar_value(std::string& dest, const rapidjson::Value& json)
-{
-    if (json.IsString())
-    {
-        dest = json.GetString();
-        return true;
-    }
-
-    return false;
-}
-
-bool scalar_value(int& dest, const rapidjson::Value& json)
-{
-    if (json.IsInt())
-    {
-        dest = json.GetInt();
-        return true;
-    }
-    else if (json.IsString()) // Backwards compatibility
-    {
-        std::string str_tmp = json.GetString();
-        dest = atoi(str_tmp.c_str());
-        return true;
-    }
-
-    return false;
-}
-
-bool scalar_value(double& dest, const rapidjson::Value& json)
-{
-    if (json.IsDouble())
-    {
-        dest = json.GetDouble();
-        return true;
-    }
-    else if (json.IsInt()) // Backwards compatibility
-    {
-        dest = (double)json.GetInt();
-        return true;
-    }
-    else if (json.IsString())
-    {
-        std::string str_tmp = json.GetString();
-        dest = atof(str_tmp.c_str());
-        return true;
-    }
-
-    return false;
-}
-
-bool scalar_value(bool& dest, const rapidjson::Value& json)
-{
-    if (json.IsBool())
-    {
-        dest = json.GetBool();
-        return true;
-    }
-    else if (json.IsInt()) // Backwards compatibility
-    {
-        dest = (json.GetInt() == 0) ? false : true;
-        return true;
-    }
-    else if (json.IsString())
-    {
-        std::string str_tmp = json.GetString();
-        std::transform(str_tmp.begin(), str_tmp.end(), str_tmp.begin(), ::toupper); //  uppercase 
-        dest = (str_tmp == "TRUE") ? true : false;
-        return true;
-    }
-
-    return false;
 }
 
 } /* jsonkit */ 

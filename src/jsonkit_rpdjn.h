@@ -14,6 +14,20 @@ namespace jsonkit
 bool prettify(const rapidjson::Value& inJson, std::string& outJson);
 bool condense(const rapidjson::Value& inJson, std::string& outJson);
 
+/// stringfy json value in condensed format
+inline
+void stringfy(const rapidjson::Value& json, std::string& dest)
+{
+    condense(json, dest);
+}
+inline
+std::string stringfy(const rapidjson::Value& json)
+{
+    std::string dest;
+    condense(json, dest);
+    return dest;
+}
+
 // generate schema from sample json and generate sample json from schema,
 // these two operation may not be reversiable.
 bool form_schema(const rapidjson::Value& inJson, rapidjson::Document& outSchema);
