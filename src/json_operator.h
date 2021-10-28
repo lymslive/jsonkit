@@ -98,16 +98,24 @@ std::string operate_pipe(const rapidjson::Value& json, const char* defVal)
  * @details wrap two pointers for json value and it's allocator to suppor both
  * read and write. Best used as local variable, shorter life time than it's
  * underlying json value/document.
+ * @note designed as puer value class, operator function return a new value.
  * */
 class COperand
 {
 public:
     /** constructor from json value and optional alloctor */
     COperand(rapidjson::Document& doc)
-        : m_pJsonNode(&doc), m_pAllocator(&(doc.GetAllocator())) {}
-    COperand(rapidjson::Value& val, rapidjson::Document::AllocatorType& allocator)
-        : m_pJsonNode(&val), m_pAllocator(&allocator) {}
-    COperand(rapidjson::Value& val) : m_pJsonNode(&val) {}
+        : m_pJsonNode(&doc), m_pAllocator(&(doc.GetAllocator()))
+    {}
+
+    COperand(const rapidjson::Value& val, rapidjson::Document::AllocatorType& allocator)
+        : m_pJsonNode(&const_cast<rapidjson::Value&>(val))
+        , m_pAllocator(&allocator)
+    {}
+
+    COperand(const rapidjson::Value& val)
+        : m_pJsonNode(&const_cast<rapidjson::Value&>(val))
+    {}
 
     /** treat json operand as pointer or interator of underlying json node */
     rapidjson::Value& operator*() { return *m_pJsonNode; }
@@ -118,22 +126,21 @@ public:
      * @details allowed path parameter including string and int index.
      * will change the current json node.
      * */
-    COperand& OperatePath(const char* path);
-    COperand& OperatePath(size_t index);
-    COperand& OperatePath(const std::string& path)
+    COperand OperatePath(const char* path) const;
+    COperand OperatePath(size_t index) const;
+    COperand OperatePath(const std::string& path) const
     {
         return OperatePath(path.c_str());
     }
-    COperand& OperatePath(int index)
+    COperand OperatePath(int index) const
     {
         return OperatePath((size_t)index);
     }
 
-    /** jump to new json node */
-    COperand& OperateJump(rapidjson::Value& val)
+    /** perform multiply operator(*), jump to new json node, as start base node */
+    COperand OperateStar(const rapidjson::Value& val) const
     {
-        m_pJsonNode = &val;
-        return *this;
+        return COperand(val, *m_pAllocator);
     }
 
     template <typename valueT>
@@ -146,8 +153,20 @@ public:
         return operate_pipe(*m_pJsonNode, defVal);
     }
 
-    COperand& Assign(int iVal);
-    COperand& Assign(double dVal);
+    /** can directly assign numeric value to rapidjson::Value.
+     * example:
+     * COperand& Assign(int iVal);
+     * COperand& Assign(double dVal);
+     * */
+    template <typename valueT> 
+    COperand& Assign(valueT val)
+    {
+        if (m_pJsonNode)
+        {
+            (*m_pJsonNode) = val;
+        }
+        return *this;
+    }
     COperand& Assign(const char* psz);
     COperand& Assign(const std::string& str);
 
@@ -198,7 +217,7 @@ public:
     }
 
     template <typename valueT>
-    COperand& Append(const valueT& item)
+    COperand Append(const valueT& item) const
     {
         if (!m_pJsonNode || !m_pAllocator)
         {
@@ -217,7 +236,7 @@ public:
     }
 
     template <typename valueT>
-    COperand& Append(const std::pair<std::string, valueT>& item)
+    COperand Append(const std::pair<std::string, valueT>& item) const
     {
         if (!m_pJsonNode || !m_pAllocator)
         {
@@ -240,30 +259,38 @@ public:
 private:
     rapidjson::Value* m_pJsonNode = nullptr;
     rapidjson::Document::AllocatorType* m_pAllocator = nullptr;
+
+    // internal use, contruct from pointer directlly
+    COperand(const rapidjson::Value* pJsonNode, rapidjson::Document::AllocatorType* pAllocator)
+        : m_pJsonNode(const_cast<rapidjson::Value*>(pJsonNode))
+        , m_pAllocator(pAllocator)
+    {}
 };
 
 } /* jsonkit */ 
 
-/** operator for COperand: in globle namespace.
+/** operator for COperand, in globle namespace.
  * @param json wrapped json operand
  * @param path json path, string or int
- * @return *this json operand
- * @note only performed on non-const COperand, as operate will change it's
- * internal state.
+ * @return another json operand that may moved pointer
  * */
 template <typename pathT>
-jsonkit::COperand& operator/ (jsonkit::COperand& json, const pathT& path)
+jsonkit::COperand operator/ (const jsonkit::COperand& json, const pathT& path)
 {
     return json.OperatePath(path);
 }
 
-/*
-template <typename pathT>
-const jsonkit::COperand& operator/ (const jsonkit::COperand& json, const pathT& path)
+inline
+jsonkit::COperand operator* (const jsonkit::COperand& jsop, const rapidjson::Value& val)
 {
-    return const_cast<const jsonkit::COperand&>(const_cast<jsonkit::COperand&>(json).OperatePath(path));
+    return jsop.OperateStar(val);
 }
-*/
+
+inline
+std::string operator| (const jsonkit::COperand& json, const char* defVal)
+{
+    return json.OperatePipe(std::string(defVal));
+}
 
 template <typename valueT>
 valueT operator| (const jsonkit::COperand& json, const valueT& defVal)
@@ -287,11 +314,12 @@ valueT& operator|= (valueT& defVal, const jsonkit::COperand& json)
 
 /** add item to json array, or add pair to json object */
 template <typename valueT>
-jsonkit::COperand& operator<< (jsonkit::COperand& json, const valueT& val)
+jsonkit::COperand operator<< (const jsonkit::COperand& json, const valueT& val)
 {
     return json.Append(val);
 }
 
+inline
 jsonkit::COperand& operator>> (jsonkit::COperand& json, std::string& dest)
 {
     if (json)
@@ -301,11 +329,21 @@ jsonkit::COperand& operator>> (jsonkit::COperand& json, std::string& dest)
     return json;
 }
 
-/** operator for json Value: in globle namespace. */
+/** operator for rapidjson::Value, in globle namespace.
+ * @param json 
+ * @param path json path, string or int
+ * @return reference to (may) another json value
+ * */
 template <typename pathT>
 const rapidjson::Value& operator/ (const rapidjson::Value& json, const pathT& path)
 {
     return jsonkit::operate_path(json, path);
+}
+
+inline
+std::string operator| (const rapidjson::Value& json, const char* defVal)
+{
+    return jsonkit::operate_pipe(json, std::string(defVal));
 }
 
 template <typename valueT>
@@ -334,6 +372,7 @@ bool operator! (const rapidjson::Value& json)
     return json.IsNull();
 }
 
+inline
 const rapidjson::Value& operator>> (const rapidjson::Value& json, std::string& dest)
 {
     jsonkit::stringfy(json, dest);

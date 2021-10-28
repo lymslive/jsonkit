@@ -84,7 +84,7 @@ bool scalar_value(bool& dest, const rapidjson::Value& json)
 
 /**************************************************************/
 
-COperand& COperand::OperatePath(const char* path)
+COperand COperand::OperatePath(const char* path) const
 {
     if (!m_pJsonNode || !path || path[0] == '\0')
     {
@@ -99,8 +99,7 @@ COperand& COperand::OperatePath(const char* path)
     if (m_pJsonNode->IsObject() && m_pJsonNode->HasMember(path))
     {
         // todo: fix efficient
-        m_pJsonNode = &((*m_pJsonNode)[path]);
-        return *this;
+        return OperateStar((*m_pJsonNode)[path]);
     }
 
     bool any_slash = false;
@@ -129,53 +128,34 @@ COperand& COperand::OperatePath(const char* path)
         size_t index = (size_t) atoi(path);
         if (m_pJsonNode->Size() > index)
         {
-            m_pJsonNode = &((*m_pJsonNode)[index]);
-            return *this;
+            return OperateStar((*m_pJsonNode)[index]);
         }
     }
 
     if (any_slash)
     {
-        m_pJsonNode = const_cast<rapidjson::Value*>(point(*m_pJsonNode, path));
+        const rapidjson::Value* pJsonNode = point(*m_pJsonNode, path);
+        return COperand(pJsonNode, m_pAllocator);
     }
 
     return *this;
 }
 
-COperand& COperand::OperatePath(size_t index)
+COperand COperand::OperatePath(size_t index) const
 {
     if (!m_pJsonNode)
     {
         return *this;
     }
+
     if (m_pJsonNode->IsArray() && m_pJsonNode->Size() > index)
     {
-        m_pJsonNode = &((*m_pJsonNode)[index]);
+       return OperateStar((*m_pJsonNode)[index]);
     }
     else
     {
-        m_pJsonNode = nullptr;
+        return COperand(nullptr, m_pAllocator);
     }
-    return *this;
-}
-
-COperand& COperand::Assign(int iVal)
-{
-    if (m_pJsonNode)
-    {
-        m_pJsonNode->SetInt(iVal);
-        (*m_pJsonNode) = iVal;
-    }
-    return *this;
-}
-
-COperand& COperand::Assign(double dVal)
-{
-    if (m_pJsonNode)
-    {
-        (*m_pJsonNode) = dVal;
-    }
-    return *this;
 }
 
 COperand& COperand::Assign(const char* psz)

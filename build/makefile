@@ -24,17 +24,19 @@ JSONKIT_OBJ_NODIR = $(JSONKIT_SRC_NODIR:%.cpp=%.o)
 
 JSONKIT_OBJ_DIR = ./jsonkit
 JSONKIT_OBJ = $(addprefix $(JSONKIT_OBJ_DIR)/, $(JSONKIT_OBJ_NODIR))
+JSONKIT_DEP := $(patsubst %.o,%.d,$(JSONKIT_OBJ))
 
 JSONKIT_HEADER = $(wildcard $(JSONKIT_SRC_DIR)/*.h)
 
 TARGET = lib/libjsonkit.a
 all: libdir $(TARGET) header
+-include $(JSONKIT_DEP)
 
 $(TARGET) : $(JSONKIT_OBJ)
 	$(AR) $(TARGET) $(JSONKIT_OBJ)
 
 $(JSONKIT_OBJ): $(JSONKIT_OBJ_DIR)/%.o : $(JSONKIT_SRC_DIR)/%.cpp
-	$(CXX) -c $(CXXFLAGS) $(INCLUDE) -o $@ $<
+	$(CXX) -c $(CXXFLAGS) $(INCLUDE) -o $@ -MMD -MT $@ $<
 
 libdir:
 	@mkdir -p lib
@@ -42,7 +44,7 @@ libdir:
 	@mkdir -p jsonkit
 
 header:
-	cp -u $(JSONKIT_HEADER) ./include
+	@cp -u $(JSONKIT_HEADER) ./include
 
 # for tast target
 ##################################################
