@@ -82,24 +82,22 @@ bool scalar_value(bool& dest, const rapidjson::Value& json)
     return false;
 }
 
-/**************************************************************/
-
-COperand COperand::OperatePath(const char* path) const
+const rapidjson::Value* do_operate_path(const rapidjson::Value& json, const char* path)
 {
-    if (!m_pJsonNode || !path || path[0] == '\0')
+    if (path == NULL || path[0] == '\0')
     {
-        return *this;
+        return nullptr;
     }
 
-    if (!m_pJsonNode->IsObject() && !m_pJsonNode->IsArray())
+    if (!json.IsObject() && !json.IsArray())
     {
-        return *this;
+        return nullptr;
     }
 
-    if (m_pJsonNode->IsObject() && m_pJsonNode->HasMember(path))
+    if (json.IsObject() && json.HasMember(path))
     {
-        // todo: fix efficient
-        return OperateStar((*m_pJsonNode)[path]);
+        // todo:
+        return &(json[path]);
     }
 
     bool any_slash = false;
@@ -123,29 +121,41 @@ COperand COperand::OperatePath(const char* path) const
         }
     }
 
-    if (m_pJsonNode->IsArray() && all_digit)
+    if (json.IsArray() && all_digit)
     {
         size_t index = (size_t) atoi(path);
-        if (m_pJsonNode->Size() > index)
+        if (json.Size() > index)
         {
-            return OperateStar((*m_pJsonNode)[index]);
+            return &(json[index]);
         }
     }
 
     if (any_slash)
     {
-        const rapidjson::Value* pJsonNode = point(*m_pJsonNode, path);
-        return COperand(pJsonNode, m_pAllocator);
+        return point(json, path);
     }
 
-    return *this;
+    return nullptr;
+}
+
+/**************************************************************/
+
+COperand COperand::OperatePath(const char* path) const
+{
+    if (!m_pJsonNode || !path || path[0] == '\0')
+    {
+        return Zero();
+    }
+
+    const rapidjson::Value* pJsonNode = do_operate_path(*m_pJsonNode, path);
+    return COperand(pJsonNode, m_pAllocator);
 }
 
 COperand COperand::OperatePath(size_t index) const
 {
     if (!m_pJsonNode)
     {
-        return *this;
+        return Zero();
     }
 
     if (m_pJsonNode->IsArray() && m_pJsonNode->Size() > index)
@@ -206,61 +216,15 @@ const rapidjson::Value& success_path(const rapidjson::Value& ret)
 
 const rapidjson::Value& operate_path(const rapidjson::Value& json, const char* path)
 {
-    if (path == NULL || path[0] == '\0')
+    const rapidjson::Value* pVal = do_operate_path(json, path);
+    if (pVal)
+    {
+        return jsonkit::success_path(*pVal);
+    }
+    else
     {
         return jsonkit::fail_path();
     }
-
-    if (!json.IsObject() && !json.IsArray())
-    {
-        return jsonkit::fail_path();
-    }
-
-    if (json.IsObject() && json.HasMember(path))
-    {
-        return jsonkit::success_path(json[path]);
-    }
-
-    bool any_slash = false;
-    bool all_digit = true;
-    for (size_t i = 0; ; i++)
-    {
-        char c = path[i];
-        if (c == '\0')
-        {
-            break;
-        }
-        if (c == '/')
-        {
-            any_slash = true;
-            all_digit = false;
-            break;
-        }
-        if (c <= '0' || c >= '9')
-        {
-            all_digit = false;
-        }
-    }
-
-    if (json.IsArray() && all_digit)
-    {
-        size_t index = (size_t) atoi(path);
-        if (json.Size() > index)
-        {
-            return jsonkit::success_path(json[index]);
-        }
-    }
-
-    if (any_slash)
-    {
-        const rapidjson::Value *pVal = point(json, path);
-        if (pVal)
-        {
-            return jsonkit::success_path(*pVal);
-        }
-    }
-
-    return jsonkit::fail_path();
 }
 
 const rapidjson::Value& operate_path(const rapidjson::Value& json, size_t index)

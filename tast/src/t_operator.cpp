@@ -20,9 +20,7 @@ DEF_TAST(operator_jvraw, "operator on raw json value")
 
     //! complie error
     // aaa = doc / "aaa";
-    // doc / "aaa" = 1;
-    // ok cast non-const to assign int, whitch involve no allocate
-    const_cast<rapidjson::Value&>(doc / "aaa") = 11;
+    doc / "aaa" = 11;
     COUT(doc / "aaa" | 0, 11);
 
     int bbb = 0;
@@ -49,10 +47,10 @@ DEF_TAST(operator_jvraw, "operator on raw json value")
     double fff = doc / "ddd" / "fff" | 0.0;
     COUT(fff, 8.8);
 
-    const_cast<rapidjson::Value&>(doc / "ddd" / "fff") = 9.9;
+    (doc / "ddd" / "fff") = 9.9;
     COUT(doc / "ddd" / "fff" | 0.0, 9.9);
 
-    const_cast<rapidjson::Value&>(doc / "ddd" / "fff") = 999;
+    (doc / "ddd" / "fff") = 999;
     COUT(doc / "ddd" / "fff" | 0, 999);
 
 /* compile error
@@ -155,6 +153,8 @@ DEF_TAST(operator_wrap, "operator on raw json value")
     JSOP(doc) << std::make_pair(key, val);
     str |= doc / key;
 
+    (doc / "ddd" / "fff") = "g99"; // ok
+    // (doc / "ddd" / "fff") = val; // error
     COUT(str, val);
     {
         std::string stringfy;

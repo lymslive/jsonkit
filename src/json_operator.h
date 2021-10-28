@@ -75,15 +75,21 @@ const rapidjson::Value& operate_path(const rapidjson::Value& json, int index)
  * */
 bool has_path_error();
 
+/** perform operator |= to extrace value from json node */
+
+template <typename valueT>
+valueT& operate_pipeto(valueT& dest, const rapidjson::Value& json)
+{
+    scalar_value(dest, json);
+    return dest;
+}
+
+/** perform operator | to extrace value from json node */
 template <typename valueT>
 valueT operate_pipe(const rapidjson::Value& json, const valueT& defVal)
 {
-    valueT val;
-    if (scalar_value(val, json))
-    {
-        return val;
-    }
-    return defVal;
+    valueT val = defVal;
+    return operate_pipeto(val, json);
 }
 
 inline
@@ -122,6 +128,9 @@ public:
     rapidjson::Value* operator->() { return m_pJsonNode; }
     operator bool() const { return m_pJsonNode != nullptr; }
 
+    /// create an zero value.
+    COperand Zero() const { return COperand(nullptr, m_pAllocator); }
+
     /** perform path operator (slash /) on json node
      * @details allowed path parameter including string and int index.
      * will change the current json node.
@@ -137,20 +146,31 @@ public:
         return OperatePath((size_t)index);
     }
 
-    /** perform multiply operator(*), jump to new json node, as start base node */
+    /** perform multiply operator(*), jump to new json node, as start base node
+     * @note cannot jump to json node with Null value
+     * */
     COperand OperateStar(const rapidjson::Value& val) const
     {
-        return COperand(val, *m_pAllocator);
+        return val.IsNull() ? Zero() : COperand(&val, m_pAllocator);
     }
 
+    /** perform operator |= */
+    template <typename valueT>
+    valueT& OperatePipeto(valueT& dest) const
+    {
+        if (m_pJsonNode)
+        {
+            operate_pipeto(dest, *m_pJsonNode);
+        }
+        return dest;
+    }
+
+    /** perform operator | */
     template <typename valueT>
     valueT OperatePipe(const valueT& defVal) const
     {
-        if (!m_pJsonNode)
-        {
-            return defVal;
-        }
-        return operate_pipe(*m_pJsonNode, defVal);
+        valueT val = defVal;
+        return OperatePipeto(val);
     }
 
     /** can directly assign numeric value to rapidjson::Value.
@@ -286,6 +306,12 @@ jsonkit::COperand operator* (const jsonkit::COperand& jsop, const rapidjson::Val
     return jsop.OperateStar(val);
 }
 
+template <typename valueT>
+valueT& operator|= (valueT& dest, const jsonkit::COperand& json)
+{
+    return json.OperatePipeto(dest);;
+}
+
 inline
 std::string operator| (const jsonkit::COperand& json, const char* defVal)
 {
@@ -302,14 +328,6 @@ template <typename valueT>
 valueT operator| (const valueT& defVal, const jsonkit::COperand& json)
 {
     return json.OperatePipe(defVal);
-}
-
-template <typename valueT>
-valueT& operator|= (valueT& defVal, const jsonkit::COperand& json)
-{
-    valueT newVal = json.OperatePipe(defVal);
-    defVal = newVal;
-    return defVal;
 }
 
 /** add item to json array, or add pair to json object */
@@ -340,6 +358,18 @@ const rapidjson::Value& operator/ (const rapidjson::Value& json, const pathT& pa
     return jsonkit::operate_path(json, path);
 }
 
+template <typename pathT>
+rapidjson::Value& operator/ (rapidjson::Value& json, const pathT& path)
+{
+    return const_cast<rapidjson::Value&>(jsonkit::operate_path(json, path));
+}
+
+template <typename valueT>
+valueT& operator|= (valueT& dest, const rapidjson::Value& json)
+{
+    return jsonkit::operate_pipeto(dest, json);
+}
+
 inline
 std::string operator| (const rapidjson::Value& json, const char* defVal)
 {
@@ -356,14 +386,6 @@ template <typename valueT>
 valueT operator| (const valueT& defVal, const rapidjson::Value& json)
 {
     return jsonkit::operate_pipe(json, defVal);
-}
-
-template <typename valueT>
-valueT& operator|= (valueT& defVal, const rapidjson::Value& json)
-{
-    valueT newVal = jsonkit::operate_pipe(json, defVal);
-    defVal = newVal;
-    return defVal;
 }
 
 inline
