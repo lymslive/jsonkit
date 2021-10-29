@@ -5,3 +5,6 @@
 build
 tast.cout*
 Session*.vim
+GPATH
+GRTAGS
+GTAGS
