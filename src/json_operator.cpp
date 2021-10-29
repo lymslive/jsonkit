@@ -94,10 +94,13 @@ const rapidjson::Value* do_operate_path(const rapidjson::Value& json, const char
         return nullptr;
     }
 
-    if (json.IsObject() && json.HasMember(path))
+    if (json.IsObject())
     {
-        // todo:
-        return &(json[path]);
+        auto it = json.FindMember(path);
+        if (it != json.MemberEnd())
+        {
+            return &(it->value);
+        }
     }
 
     bool any_slash = false;

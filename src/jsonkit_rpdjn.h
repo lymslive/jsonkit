@@ -42,14 +42,14 @@ bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson)
 
 /** validate the json according to schema
  * @param inJson: josn value 
- * @param inSchema: josn document as schema
+ * @param inSchema: josn value/document as schema
  * @param basedir: is for remote reference in schema
  * @return bool
  * @retval true valid json agaist the schema
  * @retval false not valid
  * */
-bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema);
-bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema, const std::string& basedir);
+bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema);
+bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema, const std::string& basedir);
 
 /// return true if two json is equal in type and field/itme recursively
 bool compare(const rapidjson::Value& aJson, const rapidjson::Value& bJson);

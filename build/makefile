@@ -5,7 +5,7 @@ COUTAST  = ../thirdparty/couttast/include
 INCLUDE = -I./include -I$(RAPIDJON) -I$(COUTAST)
 
 AR = ar -crs
-CXX = g++
+CXX = g++ -std=c++11
 CXXFLAGS = -fPIC
 
 ifdef debug

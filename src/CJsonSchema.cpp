@@ -121,14 +121,14 @@ const rapidjson::SchemaDocument* CSchemaProvider::GetRemoteDocument(const char* 
 namespace jsonkit
 {
 
-CJsonSchema::CJsonSchema(const rapidjson::Document& doc, rapidjson::IRemoteSchemaDocumentProvider* provider)
+CJsonSchema::CJsonSchema(const rapidjson::Value& doc, rapidjson::IRemoteSchemaDocumentProvider* provider)
     : m_provider(provider)
     , m_schema(doc, 0, 0, m_provider)
     , m_validator(m_schema)
 {
 }
 
-CJsonSchema::CJsonSchema(const rapidjson::Document& doc, const std::string& baseDir)
+CJsonSchema::CJsonSchema(const rapidjson::Value& doc, const std::string& baseDir)
     : m_provider(new CSchemaProvider(baseDir))
     , m_schema(doc, 0, 0, m_provider)
     , m_validator(m_schema)

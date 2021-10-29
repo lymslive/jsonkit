@@ -23,11 +23,13 @@ public:
      * @note 
      * The passed custome provider, it's ownership move to this and delete on destroy.
      * Can ommit if no need to use provider (schema $ref)
+     * @note rapidjson::SchemaDocument can also construct from Value, not
+     * Document
      * */
-    CJsonSchema(const rapidjson::Document& doc, rapidjson::IRemoteSchemaDocumentProvider* provider = NULL);
+    CJsonSchema(const rapidjson::Value& doc, rapidjson::IRemoteSchemaDocumentProvider* provider = NULL);
 
     /// pass base directory to use local schema provider internlly
-    CJsonSchema(const rapidjson::Document& doc, const std::string& baseDir);
+    CJsonSchema(const rapidjson::Value& doc, const std::string& baseDir);
     ~CJsonSchema();
 
     /// validate json against this schema, may pass out error string

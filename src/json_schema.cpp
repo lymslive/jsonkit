@@ -248,13 +248,13 @@ bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson)
 }
 
 // do not support remote schema (IRemoteSchemaDocumentProvider)
-bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema)
+bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema)
 {
     CJsonSchema schema(inSchema);
     return schema.Validate(inJson);
 }
 
-bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Document& inSchema, const std::string& basedir)
+bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema, const std::string& basedir)
 {
     CJsonSchema schema(inSchema, basedir);
     return schema.Validate(inJson);
