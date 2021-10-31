@@ -27,6 +27,7 @@ void log_to_default_file(LOCATION_PAR, const char* buffer, size_t size)
 {
     if (g_default_file != NULL)
     {
+        fprintf(g_default_file, "[%s:%d(%s)]", file, line, func);
         fwrite(buffer, 1, size, g_default_file);
         fwrite("\n", 1, 1, g_default_file);
     }

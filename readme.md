@@ -10,7 +10,7 @@ implementation. Hope this repos is useful for reference or use it directly.
 
 * json comparison
 * schema validation and generation
-* operator override, path(/) pipe(|)
+* operator override, path(/) pipe(|) and more
 
 ## Dependency
 
