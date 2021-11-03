@@ -1,4 +1,5 @@
 #include "json_operator.h"
+#include "jsonkit_internal.h"
 
 #include "rapidjson/pointer.h"
 
@@ -29,9 +30,14 @@ bool scalar_value(int& dest, const rapidjson::Value& json)
     }
     else if (json.IsString()) // Backwards compatibility
     {
-        std::string str_tmp = json.GetString();
-        dest = atoi(str_tmp.c_str());
-        return true;
+        char *endptr;
+        const char* str = json.GetString();
+        int num = strtol(str, &endptr, 10);
+        if (endptr != str)
+        {
+            dest = num;
+            return true;
+        }
     }
 
     return false;
@@ -51,9 +57,15 @@ bool scalar_value(double& dest, const rapidjson::Value& json)
     }
     else if (json.IsString())
     {
+        char *endptr;
+        const char* str = json.GetString();
         std::string str_tmp = json.GetString();
-        dest = atof(str_tmp.c_str());
-        return true;
+        double num = strtod(str, &endptr);
+        if (endptr != str)
+        {
+            dest = num;
+            return true;
+        }
     }
 
     return false;
@@ -80,6 +92,24 @@ bool scalar_value(bool& dest, const rapidjson::Value& json)
     }
 
     return false;
+}
+
+/**************************************************************/
+
+const rapidjson::Value& error_value()
+{
+    static rapidjson::Value json;
+    if (json.IsNull() != false)
+    {
+        LOGF("Warnning: null value may modified accidently!! reset to null");
+        json.SetNull();
+    }
+    return json;
+}
+
+bool is_error_value(const rapidjson::Value& json)
+{
+    return &json == &(error_value());
 }
 
 const rapidjson::Value* do_operate_path(const rapidjson::Value& json, const char* path)
@@ -141,6 +171,28 @@ const rapidjson::Value* do_operate_path(const rapidjson::Value& json, const char
     return nullptr;
 }
 
+const rapidjson::Value& operate_path(const rapidjson::Value& json, const char* path)
+{
+    const rapidjson::Value* pVal = do_operate_path(json, path);
+    if (pVal)
+    {
+        return *pVal;
+    }
+    else
+    {
+        return error_value();
+    }
+}
+
+const rapidjson::Value& operate_path(const rapidjson::Value& json, size_t index)
+{
+    if (json.IsArray() && json.Size() > index)
+    {
+        return json[index];
+    }
+    return error_value();
+}
+
 /**************************************************************/
 
 COperand COperand::OperatePath(const char* path) const
@@ -187,56 +239,6 @@ COperand& COperand::Assign(const std::string& str)
         m_pJsonNode->SetString(str.c_str(), str.size(), *m_pAllocator);
     }
     return *this;
-}
-
-/**************************************************************/
-
-static bool s_path_error = false;
-bool has_path_error()
-{
-    return s_path_error;
-}
-
-const rapidjson::Value& null_value()
-{
-    static rapidjson::Value json;
-    return json;
-}
-
-inline
-const rapidjson::Value& fail_path()
-{
-    s_path_error = true;
-    return null_value();
-}
-
-inline
-const rapidjson::Value& success_path(const rapidjson::Value& ret)
-{
-    s_path_error = false;
-    return ret;
-}
-
-const rapidjson::Value& operate_path(const rapidjson::Value& json, const char* path)
-{
-    const rapidjson::Value* pVal = do_operate_path(json, path);
-    if (pVal)
-    {
-        return jsonkit::success_path(*pVal);
-    }
-    else
-    {
-        return jsonkit::fail_path();
-    }
-}
-
-const rapidjson::Value& operate_path(const rapidjson::Value& json, size_t index)
-{
-    if (json.IsArray() && json.Size() > index)
-    {
-        return jsonkit::success_path(json[index]);
-    }
-    return jsonkit::fail_path();
 }
 
 } // end of namespace jsonkit

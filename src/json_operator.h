@@ -69,11 +69,12 @@ const rapidjson::Value& operate_path(const rapidjson::Value& json, int index)
     return operate_path(json, (size_t)index);
 }
 
-/** indicate if the last path opertor performed succeess.
+/** determin if a json value is return by path operator on error
  * @details path operator for raw json must also return reference to a json value
  * to chained operation, when error occurs, return a static null json value.
+ * also used in operator !json.
  * */
-bool has_path_error();
+bool is_error_value(const rapidjson::Value& json);
 
 /** perform operator |= to extrace value from json node */
 
@@ -289,7 +290,65 @@ private:
 
 } /* jsonkit */ 
 
-/** operator for COperand, in globle namespace.
+/**************************************************************/
+
+/** operator for rapidjson::Value, in globle namespace.
+ * @param json 
+ * @param path json path, string or int
+ * @return reference to (may) another json value
+ * */
+template <typename pathT>
+const rapidjson::Value& operator/ (const rapidjson::Value& json, const pathT& path)
+{
+    return jsonkit::operate_path(json, path);
+}
+
+template <typename pathT>
+rapidjson::Value& operator/ (rapidjson::Value& json, const pathT& path)
+{
+    return const_cast<rapidjson::Value&>(jsonkit::operate_path(json, path));
+}
+
+template <typename valueT>
+valueT& operator|= (valueT& dest, const rapidjson::Value& json)
+{
+    return jsonkit::operate_pipeto(dest, json);
+}
+
+inline
+std::string operator| (const rapidjson::Value& json, const char* defVal)
+{
+    return jsonkit::operate_pipe(json, std::string(defVal));
+}
+
+template <typename valueT>
+valueT operator| (const rapidjson::Value& json, const valueT& defVal)
+{
+    return jsonkit::operate_pipe(json, defVal);
+}
+
+template <typename valueT>
+valueT operator| (const valueT& defVal, const rapidjson::Value& json)
+{
+    return jsonkit::operate_pipe(json, defVal);
+}
+
+inline
+bool operator! (const rapidjson::Value& json)
+{
+    return json.IsNull() || jsonkit::is_error_value(json);
+}
+
+inline
+const rapidjson::Value& operator>> (const rapidjson::Value& json, std::string& dest)
+{
+    jsonkit::stringfy(json, dest);
+    return json;
+}
+
+/**************************************************************/
+
+/** JSOP operator for COperand, in globle namespace.
  * @param json wrapped json operand
  * @param path json path, string or int
  * @return another json operand that may moved pointer
@@ -347,57 +406,4 @@ jsonkit::COperand& operator>> (jsonkit::COperand& json, std::string& dest)
     return json;
 }
 
-/** operator for rapidjson::Value, in globle namespace.
- * @param json 
- * @param path json path, string or int
- * @return reference to (may) another json value
- * */
-template <typename pathT>
-const rapidjson::Value& operator/ (const rapidjson::Value& json, const pathT& path)
-{
-    return jsonkit::operate_path(json, path);
-}
-
-template <typename pathT>
-rapidjson::Value& operator/ (rapidjson::Value& json, const pathT& path)
-{
-    return const_cast<rapidjson::Value&>(jsonkit::operate_path(json, path));
-}
-
-template <typename valueT>
-valueT& operator|= (valueT& dest, const rapidjson::Value& json)
-{
-    return jsonkit::operate_pipeto(dest, json);
-}
-
-inline
-std::string operator| (const rapidjson::Value& json, const char* defVal)
-{
-    return jsonkit::operate_pipe(json, std::string(defVal));
-}
-
-template <typename valueT>
-valueT operator| (const rapidjson::Value& json, const valueT& defVal)
-{
-    return jsonkit::operate_pipe(json, defVal);
-}
-
-template <typename valueT>
-valueT operator| (const valueT& defVal, const rapidjson::Value& json)
-{
-    return jsonkit::operate_pipe(json, defVal);
-}
-
-inline
-bool operator! (const rapidjson::Value& json)
-{
-    return json.IsNull();
-}
-
-inline
-const rapidjson::Value& operator>> (const rapidjson::Value& json, std::string& dest)
-{
-    jsonkit::stringfy(json, dest);
-    return json;
-}
 #endif /* end of include guard: JSON_OPERATOR_H__ */

@@ -14,7 +14,7 @@ void merge(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Docume
 {
 }
 
-void merge_advance(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+void merge_express(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
 {
     if (!dst.IsObject() || dst.ObjectEmpty())
     {
@@ -37,7 +37,13 @@ void merge_advance(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson
                 const char* path = pszVal;
                 auto& newVal = src/path;
                 // newVal maybe null, ok to mean delete this key in dst
-                it->value.CopyFrom(newVal, allocator);
+                if (!newVal)
+                {
+                    it->value.CopyFrom(newVal, allocator);
+                }
+                {
+                    it->value.SetNull();
+                }
             }
             else if (leader == '=')
             {
@@ -48,9 +54,14 @@ void merge_advance(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson
                 }
                 else
                 {
-                    it->value.SetNull();
+                    // leave it not changed, notice the strange result
+                    // it->value.SetNull();
                 }
             }
+        }
+        if (it->value.IsObject())
+        {
+            merge_express(src, it->value, allocator);
         }
     }
 }

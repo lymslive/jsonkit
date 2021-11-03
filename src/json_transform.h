@@ -18,7 +18,7 @@ typedef std::function<void(const rapidjson::Value& src, rapidjson::Value& dst, r
 
 void merge(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
 
-void merge_advance(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
+void merge_express(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
 
 void slot_register(const std::string& name, json_slot_fn slot);
 

@@ -461,3 +461,189 @@ DEF_TAST(sql_invalid, "detect sql injection")
         COUT(sql, sqlExpect);
     }
 }
+
+DEF_TAST(sql_null, "treat null value specially")
+{
+    DESC("skip null in SET... statement");
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "value": {
+        "f_1": "val-1",
+        "f_2": null,
+        "f_3": 333
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "INSERT INTO t_name SET f_1='val-1',f_3=333";
+        COUT(jsonkit::sql_insert(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("use string `null` to really ment to set null value");
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "value": {
+        "f_1": "val-1",
+        "f_2": "`null`",
+        "f_3": 333
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "INSERT INTO t_name SET f_1='val-1',f_2=null,f_3=333";
+        COUT(jsonkit::sql_insert(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("skill field with null value in the first row");
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "value": [
+        {
+            "f_1": "val-1",
+            "f_2": null,
+            "f_3": 333
+        },
+        {
+            "f_1": "val-1.2",
+            "f_2": "val-2.2",
+            "f_3": 444
+        }
+    ]
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "INSERT INTO t_name (f_1,f_3) VALUES ('val-1',333), ('val-1.2',444)";
+        COUT(jsonkit::sql_insert(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("second row can accept null value directlly");
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "value": [
+        {
+            "f_1": "val-1",
+            "f_2": "val-2",
+            "f_3": 333
+        },
+        {
+            "f_1": "val-1.2",
+            "f_3": null
+        }
+    ]
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "INSERT INTO t_name (f_1,f_2,f_3) VALUES ('val-1','val-2',333), ('val-1.2',null,null)";
+        COUT(jsonkit::sql_insert(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("skill null value in WHERE ...");
+    {
+std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "type": "xxx",
+        "id": [100, 200, 300],
+        "key": {
+            "gt": 10,
+            "lt": 20
+        },
+        "date": null
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND type='xxx' AND id IN (100,200,300) AND key>10 AND key<20";
+        COUT(jsonkit::sql_select(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("specific value is null in WHERE ...");
+    {
+std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "type": "xxx",
+        "id": [100, 200, 300],
+        "key": {
+            "gt": 10,
+            "lt": 20
+        },
+        "date": {
+            "null": true
+        }
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND type='xxx' AND id IN (100,200,300) AND key>10 AND key<20 AND date is NULL";
+        COUT(jsonkit::sql_select(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("specific value is not null in WHERE ...");
+    {
+std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "type": "xxx",
+        "id": [100, 200, 300],
+        "key": {
+            "gt": 10,
+            "lt": 20
+        },
+        "date": {
+            "null": false
+        }
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND type='xxx' AND id IN (100,200,300) AND key>10 AND key<20 AND date is not NULL";
+        COUT(jsonkit::sql_select(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+}

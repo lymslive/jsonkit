@@ -61,7 +61,7 @@ std::string sqlfy_value(const rapidjson::Value& json)
         }
         sql += '\'';
 
-        // keep origin string in `` quote, eg. `now()`
+        // keep origin string in `` quote, eg. `now()` `null`
         if (sql.size() > 4 && sql[1] == '`' && sql[sql.size()-2] == '`')
         {
             // extrace '`real-input-string`'
@@ -150,6 +150,12 @@ std::string sql_set(const rapidjson::Value& json)
     sql += "SET ";
     for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
     {
+        // skip json null, if really mean to set null use string "`null`"
+        if (it->value.IsNull())
+        {
+            continue;
+        }
+
         std::string field = it->name.GetString();
         if (!sql_check_word(field))
         {
@@ -176,6 +182,11 @@ std::string sql_values(const rapidjson::Value& json)
     std::string value;
     for (auto it = first.MemberBegin(); it != first.MemberEnd(); ++it)
     {
+        if (it->value.IsNull())
+        {
+            continue;
+        }
+
         std::string fname = it->name.GetString();
         if (!sql_check_word(fname))
         {
@@ -279,6 +290,21 @@ std::string sql_mulcmp(const rapidjson::Value& json, const std::string& field)
         {
             STRCAT(sql, " AND ", field, "<=", sqlfy_value(it->value));
         }
+        else if (op == "like")
+        {
+            STRCAT(sql, " AND ", field, " like ", sqlfy_value(it->value));
+        }
+        else if (op == "null")
+        {
+            if (it->value.IsBool() && it->value.GetBool())
+            {
+                STRCAT(sql, " AND ", field, " is NULL");
+            }
+            else
+            {
+                STRCAT(sql, " AND ", field, " is not NULL");
+            }
+        }
     }
     return sql;
 }
@@ -305,6 +331,11 @@ std::string sql_where(const rapidjson::Value& json)
     std::string sql("WHERE 1=1");
     for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
     {
+        if (it->value.IsNull())
+        {
+            continue;
+        }
+
         std::string field = it->name.GetString();
         if (!sql_check_word(field))
         {
