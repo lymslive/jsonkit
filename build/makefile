@@ -1,5 +1,7 @@
 .PHONY : all tast header libdir tastdir echo clean tast.run
 
+-include local-env.mk
+
 RAPIDJON = ../thirdparty/rapidjson/include
 COUTAST  = ../thirdparty/couttast/include
 INCLUDE = -I./include -I$(RAPIDJON) -I$(COUTAST)
