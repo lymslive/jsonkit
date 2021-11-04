@@ -3,11 +3,11 @@
 
 DEF_TAST(operator_jvraw, "operator on raw json value")
 {
-    std::string jsonText = "{\
-        \"aaa\": 1, \"bbb\":2,\
-        \"ccc\": [3, 4, 5, 6],\
-        \"ddd\": {\"eee\":7, \"fff\":8.8}\
-    }";
+std::string jsonText = R"json({
+    "aaa": 1, "bbb":2,
+    "ccc": [3, 4, 5, 6],
+    "ddd": {"eee":7, "fff":8.8}
+})json";
 
     // std::string jsonText = "{ \"aaa\": 1, \"bbb\":2, \"ccc\": [3, 4, 5, 6], \"ddd\": {\"eee\":7, \"fff\":8.8} }";
 
@@ -64,11 +64,11 @@ DEF_TAST(operator_jvraw, "operator on raw json value")
 
 DEF_TAST(operator_wrap, "operator on raw json value")
 {
-    std::string jsonText = "{\
-        \"aaa\": 1, \"bbb\":2,\
-        \"ccc\": [3, 4, 5, 6],\
-        \"ddd\": {\"eee\":7, \"fff\":8.8}\
-    }";
+std::string jsonText = R"json({
+    "aaa": 1, "bbb":2,
+    "ccc": [3, 4, 5, 6],
+    "ddd": {"eee":7, "fff":8.8}
+})json";
 
     rapidjson::Document doc;
     doc.Parse(jsonText.c_str(), jsonText.size());
@@ -163,3 +163,81 @@ DEF_TAST(operator_wrap, "operator on raw json value")
     }
 }
 
+DEF_TAST(operator_error, "handle path operator error")
+{
+std::string jsonText = R"json({
+    "aaa": 1, "bbb":2,
+    "ccc": [3, 4, 5, 6],
+    "ddd": {"eee":7, "fff":8.8}
+})json";
+
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    auto& eee = doc/"ddd"/"eee";
+    auto& ggg = doc/"ddd"/"ggg";
+    COUT(!eee, false);
+    COUT(!ggg, true);
+    COUT(eee.IsNull(), false);
+    COUT(ggg.IsNull(), true);
+    COUT(jsonkit::is_error_value(eee), false);
+    COUT(jsonkit::is_error_value(ggg), true);
+
+    DESC("wrong to modify the error value");
+    ggg = 100;
+    COUT(ggg | 0, 100);
+
+    DESC("will automatically reset the error value, in single thread");
+    auto& hhh = doc/"ddd"/"hhh";
+    COUT(&ggg == &hhh, true);
+    COUT(hhh | 0, 0);
+    COUT(hhh.IsNull(), true);
+    COUT(jsonkit::is_error_value(hhh), true);
+    COUT(!hhh, true);
+
+    COUT(ggg | 0, 0);
+}
+
+DEF_TAST(operator_scalar, "handle scalar auto conversion")
+{
+    std::string jsonText = R"json({
+    "aaa": 100, "bbb":200.0,
+    "ccc": "100", "ddd": "100abc", "eee": "abc100",
+    "fff": "200.0", "ggg": "200.0abc", "hhh": "abc200.",
+    "t1": 1, "t2": true, "t3": "true", "t4": "TRUE",
+    "f1": 0, "f2": false, "f3": "false", "f4": "FALSE"
+})json";
+
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    DESC("int can convert to double");
+    COUT(doc/"aaa" | 0, 100);
+    COUT(doc/"aaa" | 0.0, 100.0);
+    COUT((doc/"aaa").IsDouble(), false);
+
+    DESC("double cannot convert to int");
+    COUT(doc/"bbb" | 0.0, 200.0);
+    COUT(doc/"bbb" | 0, 0);
+    COUT((doc/"bbb").IsInt(), false);
+
+    COUT(doc/"ccc" | 1, 100);
+    COUT(doc/"ddd" | 1, 100);
+    COUT(doc/"eee" | 1, 1);
+
+    COUT(doc/"fff" | 1.0, 200.0);
+    COUT(doc/"ggg" | 1.0, 200.0);
+    COUT(doc/"hhh" | 1.0, 1.0);
+
+    COUT(doc/"t1" | false, true);
+    COUT(doc/"t2" | false, true);
+    COUT(doc/"t3" | false, true);
+    COUT(doc/"t4" | false, true);
+
+    COUT(doc/"f1" | true, false);
+    COUT(doc/"f2" | true, false);
+    COUT(doc/"f3" | true, false);
+    COUT(doc/"f4" | true, false);
+}

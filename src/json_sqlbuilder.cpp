@@ -257,6 +257,8 @@ std::string sql_in(const rapidjson::Value& json)
  *   "lt": ...,
  *   "ge": ...,
  *   "le": ...,
+ *   "like": ...,
+ *   "null": true/false
  * }
  * @endcode
  * */
@@ -265,6 +267,11 @@ std::string sql_mulcmp(const rapidjson::Value& json, const std::string& field)
     std::string sql;
     for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
     {
+        if (it->value.IsNull())
+        {
+            continue;
+        }
+
         std::string op = it->name.GetString();
         if (op == "eq")
         {
@@ -399,9 +406,13 @@ std::string sql_limit(const rapidjson::Value& json)
         count = sql_limit_valid(json / "count");
     }
 
-    if (!offset.empty() && !count.empty())
+    if (!count.empty())
     {
-        return STRCAT(sql, offset, ",", count);
+        if (!offset.empty())
+        {
+            return STRCAT(sql, offset, ",", count);
+        }
+        return STRCAT(sql, count);
     }
 
     return "";

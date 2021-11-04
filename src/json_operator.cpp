@@ -99,7 +99,7 @@ bool scalar_value(bool& dest, const rapidjson::Value& json)
 const rapidjson::Value& error_value()
 {
     static rapidjson::Value json;
-    if (json.IsNull() != false)
+    if (!json.IsNull())
     {
         LOGF("Warnning: null value may modified accidently!! reset to null");
         json.SetNull();

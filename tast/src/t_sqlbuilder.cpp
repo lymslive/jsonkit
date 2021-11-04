@@ -321,7 +321,7 @@ std::string jsonText = R"json({
     }
 }
 
-DEF_TAST(sql_invalid, "detect sql injection")
+DEF_TAST(sql_injection, "detect sql injection")
 {
     DESC("invalid table name");
     {

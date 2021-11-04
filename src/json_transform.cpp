@@ -10,16 +10,19 @@ namespace jsonkit
 static
 std::map<std::string, json_slot_fn> s_mapSlot;
 
-void merge(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+void slot_register(const std::string& name, json_slot_fn slot)
 {
+    s_mapSlot.insert(std::make_pair(name, slot));
 }
 
-void merge_express(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+void CPathFiller::operator() (const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
 {
     if (!dst.IsObject() || dst.ObjectEmpty())
     {
         return;
     }
+
+    std::vector<const char*> vecRemoveKey;
 
     for (auto it = dst.MemberBegin(); it != dst.MemberEnd(); ++it)
     {
@@ -36,13 +39,24 @@ void merge_express(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson
             {
                 const char* path = pszVal;
                 auto& newVal = src/path;
-                // newVal maybe null, ok to mean delete this key in dst
                 if (!newVal)
                 {
-                    it->value.CopyFrom(newVal, allocator);
+                    if (canMove)
+                    {
+                        // it->value = newVal;
+                    }
+                    else
+                    {
+                        it->value.CopyFrom(newVal, allocator);
+                    }
                 }
+                else
                 {
                     it->value.SetNull();
+                    if (removeNull)
+                    {
+                        vecRemoveKey.push_back(pszKey);
+                    }
                 }
             }
             else if (leader == '=')
@@ -59,16 +73,30 @@ void merge_express(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson
                 }
             }
         }
-        if (it->value.IsObject())
+        else if (it->value.IsObject())
         {
-            merge_express(src, it->value, allocator);
+            // recursive into subtree
+            (this->operator())(src, it->value, allocator);
+        }
+    }
+
+    if (removeNull && !vecRemoveKey.empty())
+    {
+        for (auto& key : vecRemoveKey)
+        {
+            dst.RemoveMember(key);
         }
     }
 }
 
-void slot_register(const std::string& name, json_slot_fn slot)
+void merge(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
 {
-    s_mapSlot.insert(std::make_pair(name, slot));
+}
+
+void merge_fill(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+{
+    CPathFiller fill;
+    return fill(src, dst, allocator);
 }
 
 } /* jsonkit */ 
