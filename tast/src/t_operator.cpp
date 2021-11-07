@@ -1,3 +1,9 @@
+/**
+ * @file t_operator.cpp
+ * @author lymslive
+ * @date 2021-11-07
+ * @brief test json operator overrides
+ * */
 #include "tinytast.hpp"
 #include "json_operator.h"
 
@@ -240,4 +246,10 @@ DEF_TAST(operator_scalar, "handle scalar auto conversion")
     COUT(doc/"f2" | true, false);
     COUT(doc/"f3" | true, false);
     COUT(doc/"f4" | true, false);
+
+    const char* psz = doc/"ddd" | "";
+    std::string str = doc/"ddd" | std::string();
+    COUT(psz);
+    COUT(str);
+    COUT(str == psz, true);
 }

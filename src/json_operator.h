@@ -23,6 +23,8 @@
  *   int d = json | 0.0;
  *   std::string s = json | "";
  * @endcode
+ *
+ * JSOP macro make a json doc(value) modifiable. and more ...
  * */
 #ifndef JSON_OPERATOR_H__
 #define JSON_OPERATOR_H__
@@ -48,10 +50,14 @@ namespace jsonkit
 /**************************************************************/
 
 /** extract a scalar json vaue to native cpp type */
+bool scalar_value(const char*& dest, const rapidjson::Value& json);
 bool scalar_value(std::string& dest, const rapidjson::Value& json);
 bool scalar_value(int& dest, const rapidjson::Value& json);
 bool scalar_value(double& dest, const rapidjson::Value& json);
 bool scalar_value(bool& dest, const rapidjson::Value& json);
+bool scalar_value(uint32_t& dest, const rapidjson::Value& json);
+bool scalar_value(int64_t& dest, const rapidjson::Value& json);
+bool scalar_value(uint64_t& dest, const rapidjson::Value& json);
 
 /** read-only operator can perform directly on json value */
 const rapidjson::Value& operate_path(const rapidjson::Value& json, const char* path);
@@ -93,11 +99,13 @@ valueT operate_pipe(const rapidjson::Value& json, const valueT& defVal)
     return operate_pipeto(val, json);
 }
 
+/*
 inline
 std::string operate_pipe(const rapidjson::Value& json, const char* defVal)
 {
     return operate_pipe(json, std::string(defVal));
 }
+*/
 
 /**************************************************************/
 
@@ -315,10 +323,11 @@ valueT& operator|= (valueT& dest, const rapidjson::Value& json)
     return jsonkit::operate_pipeto(dest, json);
 }
 
+// to support literal string as char[N], auto convert to const char*
 inline
-std::string operator| (const rapidjson::Value& json, const char* defVal)
+const char* operator| (const rapidjson::Value& json, const char* defVal)
 {
-    return jsonkit::operate_pipe(json, std::string(defVal));
+    return jsonkit::operate_pipe(json, defVal);
 }
 
 template <typename valueT>
@@ -372,9 +381,9 @@ valueT& operator|= (valueT& dest, const jsonkit::COperand& json)
 }
 
 inline
-std::string operator| (const jsonkit::COperand& json, const char* defVal)
+const char* operator| (const jsonkit::COperand& json, const char* defVal)
 {
-    return json.OperatePipe(std::string(defVal));
+    return json.OperatePipe(defVal);
 }
 
 template <typename valueT>

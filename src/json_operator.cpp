@@ -10,6 +10,34 @@ namespace jsonkit
 
 /**************************************************************/
 
+/** try to convert string json to number, using strtol */
+template <typename numberT>
+bool string_number(numberT& dest, const rapidjson::Value& json)
+{
+    if (json.IsString())
+    {
+        char *endptr;
+        const char* str = json.GetString();
+        long long int num = strtol(str, &endptr, 10);
+        if (endptr != str)
+        {
+            dest = (numberT)num;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool scalar_value(const char*& dest, const rapidjson::Value& json)
+{
+    if (json.IsString())
+    {
+        dest = json.GetString();
+        return true;
+    }
+    return false;
+}
+
 bool scalar_value(std::string& dest, const rapidjson::Value& json)
 {
     if (json.IsString())
@@ -17,7 +45,6 @@ bool scalar_value(std::string& dest, const rapidjson::Value& json)
         dest = json.GetString();
         return true;
     }
-
     return false;
 }
 
@@ -28,18 +55,10 @@ bool scalar_value(int& dest, const rapidjson::Value& json)
         dest = json.GetInt();
         return true;
     }
-    else if (json.IsString()) // Backwards compatibility
+    if (json.IsString())
     {
-        char *endptr;
-        const char* str = json.GetString();
-        int num = strtol(str, &endptr, 10);
-        if (endptr != str)
-        {
-            dest = num;
-            return true;
-        }
+        return string_number(dest, json);
     }
-
     return false;
 }
 
@@ -50,9 +69,9 @@ bool scalar_value(double& dest, const rapidjson::Value& json)
         dest = json.GetDouble();
         return true;
     }
-    else if (json.IsInt()) // Backwards compatibility
+    else if (json.IsInt64()) // Backwards compatibility
     {
-        dest = (double)json.GetInt();
+        dest = (double)json.GetInt64();
         return true;
     }
     else if (json.IsString())
@@ -78,9 +97,9 @@ bool scalar_value(bool& dest, const rapidjson::Value& json)
         dest = json.GetBool();
         return true;
     }
-    else if (json.IsInt()) // Backwards compatibility
+    else if (json.IsUint64())
     {
-        dest = (json.GetInt() == 0) ? false : true;
+        dest = (json.GetUint64() == 0) ? false : true;
         return true;
     }
     else if (json.IsString())
@@ -91,6 +110,47 @@ bool scalar_value(bool& dest, const rapidjson::Value& json)
         return true;
     }
 
+    return false;
+}
+
+bool scalar_value(uint32_t& dest, const rapidjson::Value& json)
+{
+    if (json.IsUint())
+    {
+        dest = json.GetUint();
+        return true;
+    }
+    if (json.IsString())
+    {
+        return string_number(dest, json);
+    }
+    return false;
+}
+
+bool scalar_value(int64_t& dest, const rapidjson::Value& json)
+{
+    if (json.IsInt64())
+    {
+        dest = json.GetInt64();
+        return true;
+    }
+    if (json.IsString())
+    {
+        return string_number(dest, json);
+    }
+    return false;
+}
+bool scalar_value(uint64_t& dest, const rapidjson::Value& json)
+{
+    if (json.IsUint64())
+    {
+        dest = json.GetUint64();
+        return true;
+    }
+    if (json.IsString())
+    {
+        return string_number(dest, json);
+    }
     return false;
 }
 
