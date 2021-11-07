@@ -4,7 +4,6 @@
  * @date 2021-10-27
  * @brief implementation for json compare
  * */
-#include "jsonkit_plain.h"
 #include "json_compare.h"
 #include "jsonkit_internal.h"
 
@@ -208,44 +207,6 @@ bool compatible(const rapidjson::Value& aJson, const rapidjson::Value& bJson)
 {
     std::string root("/");
     return 0 == jsonkit::impl::CompareJsonImpl(bJson, aJson, true, root, root);
-}
-
-bool compare(const std::string& aJson, const std::string& bJson)
-{
-    rapidjson::Document docA;
-    docA.Parse(aJson.c_str(), aJson.size());
-    if (docA.HasParseError())
-    {
-        return false;
-    }
-
-    rapidjson::Document docB;
-    docB.Parse(bJson.c_str(), bJson.size());
-    if (docB.HasParseError())
-    {
-        return false;
-    }
-
-    return jsonkit::compare(docA, docB);
-}
-
-bool compatible(const std::string& aJson, const std::string& bJson)
-{
-    rapidjson::Document docA;
-    docA.Parse(aJson.c_str(), aJson.size());
-    if (docA.HasParseError())
-    {
-        return false;
-    }
-
-    rapidjson::Document docB;
-    docB.Parse(bJson.c_str(), bJson.size());
-    if (docB.HasParseError())
-    {
-        return false;
-    }
-
-    return jsonkit::compatible(docA, docB);
 }
 
 } /* jsonkit */ 

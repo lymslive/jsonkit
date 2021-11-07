@@ -84,6 +84,7 @@ tast.run:
 clean:
 	rm -rf $(TARGET) $(TAST_TARGET)
 	rm -rf $(JSONKIT_OBJ) $(TAST_OBJ)
+	rm -rf $(JSONKIT_DEP)
 echo:
 	@echo JSONKIT_SRC
 	@echo $(JSONKIT_SRC)

@@ -4,7 +4,6 @@
  * @date 2021-10-27
  * @brief json pointer path related uitlity.
  * */
-#include "jsonkit_plain.h"
 #include "jsonkit_rpdjn.h"
 
 #include "rapidjson/document.h"
@@ -30,29 +29,6 @@ const rapidjson::Value* point(const rapidjson::Value& inJson, const std::string&
         // make sure path start with a slash '/'
         return point(inJson, std::string("/") + path);
     }
-}
-
-bool point(const std::string& inJson, const std::string& path, std::string& outJson)
-{
-    return point(inJson.c_str(), inJson.size(), path, outJson);
-}
-
-bool point(const char* inJson, size_t inLen, const std::string& path, std::string& outJson)
-{
-    rapidjson::Document doc;
-    doc.Parse(inJson, inLen);
-    if (doc.HasParseError())
-    {
-        return false;
-    }
-
-    const rapidjson::Value* pJson = point(doc, path);
-    if (!pJson)
-    {
-        return false;
-    }
-
-    return condense(*pJson, outJson);
 }
 
 } /* jsonkit */ 

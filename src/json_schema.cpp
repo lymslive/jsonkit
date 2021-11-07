@@ -4,7 +4,6 @@
  * @date 2021-10-27
  * @brief implementation for json scheam tools
  * */
-#include "jsonkit_plain.h"
 #include "json_schema.h"
 #include "json_input.h"
 #include "json_output.h"
@@ -259,116 +258,6 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
 {
     CJsonSchema schema(inSchema, basedir);
     return schema.Validate(inJson);
-}
-
-/* -------------------------------------------------- */
-
-bool form_schema(const char* inJson, size_t inLen, std::string& outSchema)
-{
-    rapidjson::Document docJson;
-    docJson.Parse(inJson, inLen);
-    if (docJson.HasParseError())
-    {
-        return false;
-    }
-
-    rapidjson::Document docSchema;
-    form_schema(docJson, docSchema);
-    return condense(docSchema, outSchema);
-}
-
-bool from_schema(const char* inSchema, size_t inLen, std::string& outJson)
-{
-    rapidjson::Document docSchema;
-    docSchema.Parse(inSchema, inLen);
-    if (docSchema.HasParseError())
-    {
-        return false;
-    }
-
-    rapidjson::Document docJson;
-    from_schema(docSchema, docJson);
-    return condense(docJson, outJson);
-}
-
-/* -------------------------------------------------- */
-
-bool form_schema(const std::string& inJson, std::string& outSchema)
-{
-    return form_schema(inJson.c_str(), inJson.size(), outSchema);
-}
-
-bool from_schema(const std::string& inSchema, std::string& outJson)
-{
-    return from_schema(inSchema.c_str(), inSchema.size(), outJson);
-}
-
-// validate the json according to schema
-bool validate_schema(const std::string& inJson, const std::string& inSchema)
-{
-    rapidjson::Document docJson;
-    docJson.Parse(inJson.c_str(), inJson.size());
-    if (docJson.HasParseError())
-    {
-        return false;
-    }
-
-    rapidjson::Document docSchema;
-    docSchema.Parse(inSchema.c_str(), inSchema.size());
-    if (docSchema.HasParseError())
-    {
-        return false;
-    }
-
-    return validate_schema(docJson, docSchema);
-}
-
-bool validate_schema(const std::string& inJson, const std::string& inSchema, const std::string& basedir)
-{
-    rapidjson::Document docJson;
-    docJson.Parse(inJson.c_str(), inJson.size());
-    if (docJson.HasParseError())
-    {
-        return false;
-    }
-
-    rapidjson::Document docSchema;
-    docSchema.Parse(inSchema.c_str(), inSchema.size());
-    if (docSchema.HasParseError())
-    {
-        return false;
-    }
-
-    return validate_schema(docJson, docSchema, basedir);
-}
-
-bool validate_schema_file(const std::string& inJson, const std::string& inSchemaFile)
-{
-    rapidjson::Document docJson;
-    docJson.Parse(inJson.c_str(), inJson.size());
-    if (docJson.HasParseError())
-    {
-        return false;
-    }
-
-    rapidjson::Document docSchema;
-    if (!read_file(docSchema, inSchemaFile))
-    {
-        return false;
-    }
-
-    std::string basedir;
-    size_t pos = inSchemaFile.find_last_of("/\\:");
-    if (pos == std::string::npos)
-    {
-        basedir = inSchemaFile;
-    }
-    else
-    {
-        basedir = inSchemaFile.substr(0, pos);
-    }
-
-    return validate_schema(docJson, docSchema, basedir);
 }
 
 } /* jsonkit */ 
