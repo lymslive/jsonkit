@@ -5,11 +5,12 @@
  * @brief implementation for json scheam tools
  * */
 #include "jsonkit_plain.h"
-#include "jsonkit_rpdjn.h"
+#include "json_schema.h"
+#include "json_input.h"
+#include "json_output.h"
 #include "CJsonSchema.h"
 #include "jsonkit_internal.h"
 
-#include "rapidjson/document.h"
 #include "rapidjson/schema.h"
 
 namespace jsonkit

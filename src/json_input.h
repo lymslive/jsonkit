@@ -11,8 +11,6 @@ namespace jsonkit
     
 bool read_stream(rapidjson::Document& doc, std::istream& stream);
 bool read_file(rapidjson::Document& doc, const std::string& file);
-bool write_stream(const rapidjson::Value& doc, std::ostream& stream, bool pretty = false);
-bool write_file(const rapidjson::Value& doc, const std::string& file, bool pretty = false);
 
 } /* jsonkit */ 
 

@@ -5,10 +5,8 @@
  * @brief implementation for json compare
  * */
 #include "jsonkit_plain.h"
-#include "jsonkit_rpdjn.h"
+#include "json_compare.h"
 #include "jsonkit_internal.h"
-
-#include "rapidjson/document.h"
 
 #include <cmath>
 #include <limits>
