@@ -16,8 +16,7 @@ namespace jsonkit
 bool prettify(const char* inJson, size_t inLen, std::string& outJson)
 {
     rapidjson::Document doc;
-    doc.Parse(inJson, inLen);
-    if (doc.HasParseError())
+    if (!read_string(doc, inJson, inLen))
     {
         return false;
     }
@@ -27,8 +26,7 @@ bool prettify(const char* inJson, size_t inLen, std::string& outJson)
 bool condense(const char* inJson, size_t inLen, std::string& outJson)
 {
     rapidjson::Document doc;
-    doc.Parse(inJson, inLen);
-    if (doc.HasParseError())
+    if (!read_string(doc, inJson, inLen))
     {
         return false;
     }
@@ -52,8 +50,7 @@ bool condense(const std::string& inJson, std::string& outJson)
 bool form_schema(const char* inJson, size_t inLen, std::string& outSchema)
 {
     rapidjson::Document docJson;
-    docJson.Parse(inJson, inLen);
-    if (docJson.HasParseError())
+    if (!read_string(docJson, inJson, inLen))
     {
         return false;
     }
@@ -66,8 +63,7 @@ bool form_schema(const char* inJson, size_t inLen, std::string& outSchema)
 bool from_schema(const char* inSchema, size_t inLen, std::string& outJson)
 {
     rapidjson::Document docSchema;
-    docSchema.Parse(inSchema, inLen);
-    if (docSchema.HasParseError())
+    if (!read_string(docSchema, inSchema, inLen))
     {
         return false;
     }
@@ -93,15 +89,13 @@ bool from_schema(const std::string& inSchema, std::string& outJson)
 bool validate_schema(const std::string& inJson, const std::string& inSchema)
 {
     rapidjson::Document docJson;
-    docJson.Parse(inJson.c_str(), inJson.size());
-    if (docJson.HasParseError())
+    if (!read_string(docJson, inJson))
     {
         return false;
     }
 
     rapidjson::Document docSchema;
-    docSchema.Parse(inSchema.c_str(), inSchema.size());
-    if (docSchema.HasParseError())
+    if (!read_string(docSchema, inSchema))
     {
         return false;
     }
@@ -112,15 +106,13 @@ bool validate_schema(const std::string& inJson, const std::string& inSchema)
 bool validate_schema(const std::string& inJson, const std::string& inSchema, const std::string& basedir)
 {
     rapidjson::Document docJson;
-    docJson.Parse(inJson.c_str(), inJson.size());
-    if (docJson.HasParseError())
+    if (!read_string(docJson, inJson))
     {
         return false;
     }
 
     rapidjson::Document docSchema;
-    docSchema.Parse(inSchema.c_str(), inSchema.size());
-    if (docSchema.HasParseError())
+    if (!read_string(docSchema, inSchema))
     {
         return false;
     }
@@ -131,8 +123,7 @@ bool validate_schema(const std::string& inJson, const std::string& inSchema, con
 bool validate_schema_file(const std::string& inJson, const std::string& inSchemaFile)
 {
     rapidjson::Document docJson;
-    docJson.Parse(inJson.c_str(), inJson.size());
-    if (docJson.HasParseError())
+    if (!read_string(docJson, inJson))
     {
         return false;
     }
@@ -162,15 +153,13 @@ bool validate_schema_file(const std::string& inJson, const std::string& inSchema
 bool compare(const std::string& aJson, const std::string& bJson)
 {
     rapidjson::Document docA;
-    docA.Parse(aJson.c_str(), aJson.size());
-    if (docA.HasParseError())
+    if (!read_string(docA, aJson))
     {
         return false;
     }
 
     rapidjson::Document docB;
-    docB.Parse(bJson.c_str(), bJson.size());
-    if (docB.HasParseError())
+    if (!read_string(docB, bJson))
     {
         return false;
     }
@@ -181,15 +170,13 @@ bool compare(const std::string& aJson, const std::string& bJson)
 bool compatible(const std::string& aJson, const std::string& bJson)
 {
     rapidjson::Document docA;
-    docA.Parse(aJson.c_str(), aJson.size());
-    if (docA.HasParseError())
+    if (!read_string(docA, aJson))
     {
         return false;
     }
 
     rapidjson::Document docB;
-    docB.Parse(bJson.c_str(), bJson.size());
-    if (docB.HasParseError())
+    if (!read_string(docB, bJson))
     {
         return false;
     }
@@ -207,8 +194,7 @@ bool point(const std::string& inJson, const std::string& path, std::string& outJ
 bool point(const char* inJson, size_t inLen, const std::string& path, std::string& outJson)
 {
     rapidjson::Document doc;
-    doc.Parse(inJson, inLen);
-    if (doc.HasParseError())
+    if (!read_string(doc, inJson, inLen))
     {
         return false;
     }

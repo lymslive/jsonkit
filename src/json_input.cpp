@@ -15,10 +15,9 @@
 namespace jsonkit
 {
     
-bool read_stream(rapidjson::Document& doc, std::istream& stream)
+static
+bool parse_error(rapidjson::Document& doc)
 {
-    rapidjson::IStreamWrapper is(stream);
-    doc.ParseStream(is);
     if (doc.HasParseError())
     {
         LOGF("Parse Json Error(offset %u): %s",
@@ -27,6 +26,24 @@ bool read_stream(rapidjson::Document& doc, std::istream& stream)
         return false;
     }
     return true;
+}
+
+bool read_string(rapidjson::Document& doc, const char* psz, size_t len)
+{
+    doc.Parse(psz, len);
+    return parse_error(doc);
+}
+
+bool read_string(rapidjson::Document& doc, const std::string& str)
+{
+    return read_string(doc, str.c_str(), str.size());
+}
+
+bool read_stream(rapidjson::Document& doc, std::istream& stream)
+{
+    rapidjson::IStreamWrapper is(stream);
+    doc.ParseStream(is);
+    return parse_error(doc);
 }
 
 bool read_file(rapidjson::Document& doc, const std::string& file)

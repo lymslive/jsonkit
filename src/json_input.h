@@ -9,7 +9,11 @@
 namespace jsonkit
 {
     
+bool read_string(rapidjson::Document& doc, const char* psz, size_t len);
+bool read_string(rapidjson::Document& doc, const std::string& str);
+
 bool read_stream(rapidjson::Document& doc, std::istream& stream);
+
 bool read_file(rapidjson::Document& doc, const std::string& file);
 
 } /* jsonkit */ 
