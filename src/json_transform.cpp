@@ -1,4 +1,5 @@
 #include "json_transform.h"
+#include "jsonkit_internal.h"
 
 #include <map>
 
@@ -41,6 +42,15 @@ void CPathFiller::operator() (const rapidjson::Value& src, rapidjson::Value& dst
                 auto& newVal = src/path;
                 if (!newVal)
                 {
+                    LOGF("can not find `src` json path: %s", path);
+                    it->value.SetNull();
+                    if (removeNull)
+                    {
+                        vecRemoveKey.push_back(pszKey);
+                    }
+                }
+                else
+                {
                     if (canMove)
                     {
                         // it->value = newVal;
@@ -48,14 +58,6 @@ void CPathFiller::operator() (const rapidjson::Value& src, rapidjson::Value& dst
                     else
                     {
                         it->value.CopyFrom(newVal, allocator);
-                    }
-                }
-                else
-                {
-                    it->value.SetNull();
-                    if (removeNull)
-                    {
-                        vecRemoveKey.push_back(pszKey);
                     }
                 }
             }

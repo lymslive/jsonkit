@@ -32,6 +32,7 @@
 #include <map>
 
 #include "jsonkit_rpdjn.h"
+#include "jsonkit_internal.h" // LOGF dependent
 
 #include "rapidjson/document.h"
 
@@ -244,8 +245,13 @@ public:
         {
             return *this;
         }
+        if (m_pJsonNode->IsNull())
+        {
+            m_pJsonNode->SetArray();
+        }
         if (false == m_pJsonNode->IsArray())
         {
+            LOGF("can only append value to json array");
             return *this;
         }
 
@@ -263,8 +269,13 @@ public:
         {
             return *this;
         }
+        if (m_pJsonNode->IsNull())
+        {
+            m_pJsonNode->SetObject();
+        }
         if (false == m_pJsonNode->IsObject())
         {
+            LOGF("can only append pair to json object");
             return *this;
         }
 

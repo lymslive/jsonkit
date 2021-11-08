@@ -5,6 +5,8 @@
  * @brief implementation for simply customizable log functionaliy.
  * */
 #include "jsonkit_config.h"
+#include "jsonkit_internal.h"
+
 #include <stdarg.h>
 
 namespace jsonkit
@@ -20,6 +22,7 @@ FILE* set_logreport(FILE* fp)
 {
     FILE* old = g_default_file;
     g_default_file = fp;
+    LOGF("has set user custom log file!");
     return old;
 }
 
@@ -39,6 +42,7 @@ fn_logreport_t set_logreport(fn_logreport_t fn)
 {
     fn_logreport_t old = g_default_log_handle;
     g_default_log_handle = fn;
+    LOGF("has set user custom log function!");
     return old;
 }
 
