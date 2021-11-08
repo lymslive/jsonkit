@@ -1,42 +1,20 @@
-#include "use_rapidjson.h"
-#include "jsonkit_internal.h"
-
+/** 
+ * @file json_output.cpp 
+ * @author lymslive 
+ * @date 2021-11-07
+ * @brief implementation for json format
+ * */
+#include <sstream>
 #include <fstream>
 
-#include "rapidjson/prettywriter.h"
-#include "rapidjson/istreamwrapper.h"
-#include "rapidjson/ostreamwrapper.h"
-#include "rapidjson/error/en.h"
+#include "json_output.h"
 
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/ostreamwrapper.h"
+
+// print json in pretty or condensed format
 namespace jsonkit
 {
-    
-bool read_stream(rapidjson::Document& doc, std::istream& stream)
-{
-    rapidjson::IStreamWrapper is(stream);
-    doc.ParseStream(is);
-    if (doc.HasParseError())
-    {
-        LOGF("Parse Json Error(offset %u): %s",
-                static_cast<unsigned>(doc.GetErrorOffset()),
-                GetParseError_En(doc.GetParseError()));
-        return false;
-    }
-    return true;
-}
-
-bool read_file(rapidjson::Document& doc, const std::string& file)
-{
-    std::ifstream ifs(file.c_str());
-    if (!ifs.is_open())
-    {
-        return false;
-    }
-
-    bool bRet = read_stream(doc, ifs);
-    ifs.close();
-    return bRet;
-}
 
 bool write_stream(const rapidjson::Value& doc, std::ostream& stream, bool pretty)
 {
@@ -69,5 +47,20 @@ bool write_file(const rapidjson::Value& doc, const std::string& file, bool prett
     return bRet;
 }
 
-} /* jsonkit */ 
+bool prettify(const rapidjson::Value& inJson, std::string& outJson)
+{
+    std::stringstream oss;
+    write_stream(inJson, oss, true);
+    outJson = oss.str();
+    return true;
+}
 
+bool condense(const rapidjson::Value& inJson, std::string& outJson)
+{
+    std::stringstream oss;
+    write_stream(inJson, oss, false);
+    outJson = oss.str();
+    return true;
+}
+
+} /* jsonkit */ 
