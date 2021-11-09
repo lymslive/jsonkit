@@ -150,7 +150,7 @@ std::string jsonText = R"json({
         COUT(sql, sqlExpect);
     }
 
-    DESC("SELECT ... WHERE ... LIMIT ... ORDER BY ...");
+    DESC("SELECT ... WHERE ... ORDER BY ... LIMIT ...");
     {
 std::string jsonText = R"json({
     "table": "t_name",
@@ -175,12 +175,12 @@ std::string jsonText = R"json({
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "SELECT f_want1,f_want2 FROM t_name WHERE 1=1 AND id IN (100,200,300) AND key>10 AND key<20 AND date<=now() LIMIT 5 ORDER BY id";
+        std::string sqlExpect = "SELECT f_want1,f_want2 FROM t_name WHERE 1=1 AND id IN (100,200,300) AND key>10 AND key<20 AND date<=now() ORDER BY id LIMIT 5";
         COUT(jsonkit::sql_select(doc, sql), true);
         COUT(sql, sqlExpect);
     }
 
-    DESC("SELECT ... WHERE ... LIMIT offset,count ORDER BY ...");
+    DESC("SELECT ... WHERE ... ORDER BY ... LIMIT offset,count");
     {
 std::string jsonText = R"json({
     "table": "t_name",
@@ -200,12 +200,12 @@ std::string jsonText = R"json({
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND group='g1' AND del!=1 LIMIT 100,20 ORDER BY id";
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND group='g1' AND del!=1 ORDER BY id LIMIT 100,20";
         COUT(jsonkit::sql_select(doc, sql), true);
         COUT(sql, sqlExpect);
     }
 
-    DESC("SELECT ... WHERE ... LIMIT offset,count ORDER BY ...");
+    DESC("SELECT ... WHERE ... ORDER BY ... LIMIT offset,count");
     {
 std::string jsonText = R"json({
     "table": "t_name",
@@ -228,7 +228,7 @@ std::string jsonText = R"json({
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND group='g1' AND del!=1 LIMIT 100,20 ORDER BY id";
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND group='g1' AND del!=1 ORDER BY id LIMIT 100,20";
         COUT(jsonkit::sql_select(doc, sql), true);
         COUT(sql, sqlExpect);
     }

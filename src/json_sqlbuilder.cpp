@@ -374,6 +374,21 @@ std::string sql_where(const rapidjson::Value& json)
     return sql;
 }
 
+std::string sql_order(const rapidjson::Value& json)
+{
+    std::string sql("ORDER BY ");
+    if (json.IsString())
+    {
+        std::string order = json.GetString();
+        if (sql_check_word(order))
+        {
+            return STRCAT(sql, order);
+        }
+    }
+
+    return "";
+}
+
 // only return valid limit value, otherwise empty string
 std::string sql_limit_valid(const rapidjson::Value& json)
 {
@@ -413,21 +428,6 @@ std::string sql_limit(const rapidjson::Value& json)
             return STRCAT(sql, offset, ",", count);
         }
         return STRCAT(sql, count);
-    }
-
-    return "";
-}
-
-std::string sql_order(const rapidjson::Value& json)
-{
-    std::string sql("ORDER BY ");
-    if (json.IsString())
-    {
-        std::string order = json.GetString();
-        if (sql_check_word(order))
-        {
-            return STRCAT(sql, order);
-        }
     }
 
     return "";
@@ -505,6 +505,18 @@ bool sql_update(const rapidjson::Value& json, std::string& sql)
         STRCAT(sql, " ", where);
     }
 
+    std::string order = sql_order(json/"order");
+    if (!order.empty())
+    {
+        STRCAT(sql, " ", order);
+    }
+
+    std::string limit = sql_limit(json/"limit");
+    if (!limit.empty())
+    {
+        STRCAT(sql, " ", limit);
+    }
+
     return true;
 }
 
@@ -531,16 +543,16 @@ bool sql_select(const rapidjson::Value& json, std::string& sql)
         STRCAT(sql, " ", where);
     }
 
-    std::string limit = sql_limit(json/"limit");
-    if (!limit.empty())
-    {
-        STRCAT(sql, " ", limit);
-    }
-
     std::string order = sql_order(json/"order");
     if (!order.empty())
     {
         STRCAT(sql, " ", order);
+    }
+
+    std::string limit = sql_limit(json/"limit");
+    if (!limit.empty())
+    {
+        STRCAT(sql, " ", limit);
     }
 
     return true;
@@ -575,10 +587,24 @@ bool sql_delete(const rapidjson::Value& json, std::string& sql)
     std::string where = sql_where(json/"where");
     if (where.empty())
     {
+        // delete must have where
         return false;
     }
 
     STRCAT(sql, "DELETE FROM ", table, " ", where);
+
+    std::string order = sql_order(json/"order");
+    if (!order.empty())
+    {
+        STRCAT(sql, " ", order);
+    }
+
+    std::string limit = sql_limit(json/"limit");
+    if (!limit.empty())
+    {
+        STRCAT(sql, " ", limit);
+    }
+
     return true;
 }
 

@@ -5,7 +5,7 @@
  * @brief provid basic json schema support class from rapidjson
  * */
 #include "CJsonSchema.h"
-#include "use_rapidjson.h"
+#include "json_input.h"
 #include "jsonkit_internal.h"
 
 #include <stdio.h>
