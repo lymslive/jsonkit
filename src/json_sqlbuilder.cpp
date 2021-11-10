@@ -299,6 +299,7 @@ std::string sql_mulcmp(const rapidjson::Value& json, const std::string& field)
         }
         else if (op == "like")
         {
+            // todo: could auto add %like% or not
             STRCAT(sql, " AND ", field, " like ", sqlfy_value(it->value));
         }
         else if (op == "null")

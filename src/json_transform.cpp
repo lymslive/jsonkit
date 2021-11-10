@@ -63,15 +63,28 @@ void CPathFiller::operator() (const rapidjson::Value& src, rapidjson::Value& dst
             }
             else if (leader == '=')
             {
-                auto itSlot = s_mapSlot.find(pszVal+1);
-                if (itSlot != s_mapSlot.end())
+                std::string slotName;
+                const char* pSlash = strchr(pszKey+1, '/');
+                if (pSlash)
                 {
-                    (itSlot->second)(src, it->value, allocator);
+                    slotName.assign(pszVal+1, pSlash);
                 }
                 else
                 {
-                    // leave it not changed, notice the strange result
-                    // it->value.SetNull();
+                    slotName.assign(pszVal+1);
+                }
+                auto itSlot = s_mapSlot.find(slotName);
+                if (itSlot != s_mapSlot.end())
+                {
+                    // "it->value": "=slotName/path/to/src"
+                    if (pSlash)
+                    {
+                        (itSlot->second)(src/pSlash, it->value, allocator);
+                    }
+                    else
+                    {
+                        (itSlot->second)(src, it->value, allocator);
+                    }
                 }
             }
         }
