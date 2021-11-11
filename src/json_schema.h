@@ -29,6 +29,26 @@ bool from_schema(const rapidjson::Value& inSchema, rapidjson::Document& outJson)
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema);
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema, const std::string& basedir);
 
+/** validate json agaist one of non-standard schema
+ * @param inJson, a json that must be object
+ * @param inSchema, a json array where each item descibe one key that `inJson` should have
+ * @return true if `inJson` satisfy `inScheam`, otherwise false.
+ * @details The so called flat schema is like following:
+ * @code
+ * [
+ *   {
+ *     "name": "some key", // the key name
+ *     "type": "number|string", // the type of key
+ *     "required": true; // is the key requried or optional
+ *     "children": [{}, {}, ...] // if type if object or array of object
+ *   },
+ *   ...
+ * ]
+ * @endcode
+ * When nested with children, only support object or array of object now.
+ * */
+bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema);
+
 } /* jsonkit */ 
 
 #endif /* end of include guard: JSON_SCHEMA_H__ */

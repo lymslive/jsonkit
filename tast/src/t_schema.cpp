@@ -1,5 +1,6 @@
 #include "tinytast.hpp"
 #include "jsonkit_plain.h"
+#include "json_schema.h"
 
 #include <fstream>
 #include <sstream>
@@ -192,5 +193,244 @@ DEF_TAST(schema4_file, "test schema from file")
     const char* pfJson = "sample1.json";
     const char* pfSchema = "schema1.json";
     test_schema_file(pfJson, pfSchema);
+}
+
+DEF_TAST(schema_flat, "test simple flat schema")
+{
+
+    DESC("validate each object key");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), true);
+}
+
+    DESC("lack of required key");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": false },
+    { "name": "BBB", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+}
+
+    DESC("dismatch type of some key value");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "string", "required": true },
+    { "name": "ccc", "type": "number", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+}
+
+}
+
+DEF_TAST(schema_flat_child, "test simple flat schema with children")
+{
+    DESC("validate json with nest object");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11",
+    "ddd": {"eee":7, "fff":8.8}
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true },
+    { "name": "ddd", "type": "object", "required": true, "children": [
+      { "name": "eee", "type": "number", "required": true },
+      { "name": "fff", "type": "number", "required": true }
+    ] }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), true);
+}
+
+    DESC("validate json with nest object: lack of child key");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11",
+    "ddd": {"eee":7, "fff":8.8}
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true },
+    { "name": "ddd", "type": "object", "required": true, "children": [
+      { "name": "eee", "type": "number", "required": true },
+      { "name": "FFF", "type": "number", "required": true }
+    ] }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+}
+
+    DESC("validate json with nest object: dismatch of child type");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11",
+    "ddd": {"eee":7, "fff":8.8}
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true },
+    { "name": "ddd", "type": "object", "required": true, "children": [
+      { "name": "eee", "type": "number", "required": true },
+      { "name": "fff", "type": "string", "required": true }
+    ] }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+}
+
+    DESC("validate json with nest array");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11",
+    "ddd": [{"eee":7, "fff":8.8}, {"eee":7, "fff":8.8}]
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true },
+    { "name": "ddd", "type": "array", "required": true, "children": [
+      { "name": "eee", "type": "number", "required": true },
+      { "name": "fff", "type": "number", "required": true }
+    ] }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), true);
+}
+
+    DESC("validate json with nest array");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11",
+    "ddd": [{"eee":7, "fff":8.8}, {"eee":7, "fff":8.8}]
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true },
+    { "name": "ddd", "type": "array", "required": true, "children": [
+      { "name": "EEE", "type": "number", "required": true },
+      { "name": "fff", "type": "number", "required": true }
+    ] }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+}
+
+    DESC("validate json with nest array");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11",
+    "ddd": [{"eee":7, "fff":8.8}, {"eee":7, "fff":8.8}]
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true },
+    { "name": "ddd", "type": "array", "required": true, "children": [
+      { "name": "eee", "type": "string", "required": true },
+      { "name": "fff", "type": "number", "required": true }
+    ] }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+}
 
 }

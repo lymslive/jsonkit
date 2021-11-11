@@ -9,6 +9,7 @@
 #include "json_output.h"
 #include "CJsonSchema.h"
 #include "jsonkit_internal.h"
+#include "json_operator.h"
 
 #include "rapidjson/schema.h"
 
@@ -258,6 +259,114 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
 {
     CJsonSchema schema(inSchema, basedir);
     return schema.Validate(inJson);
+}
+
+bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema)
+{
+    if (!inJson.IsObject())
+    {
+        return false;
+    }
+
+    if (!inSchema.IsArray())
+    {
+        return false;
+    }
+
+    for (auto it = inSchema.Begin(); it != inSchema.End(); ++it)
+    {
+        if (!it->IsObject())
+        {
+            continue;
+        }
+        bool required = (*it)/"required" | false;
+        if (!required)
+        {
+            continue;
+        }
+        std::string name = (*it)/"name" | "";
+        if (name.empty())
+        {
+            continue;
+        }
+
+        auto& value = inJson/name;
+        if (!value)
+        {
+            LOGF("invalid json, no key: %s", name.c_str());
+            return false;
+        }
+
+        std::string type = (*it)/"type" | "";
+        if (type.empty())
+        {
+           continue; 
+        }
+        else if (type == "string")
+        {
+            if (!value.IsString())
+            {
+                LOGF("invalid json, not string in key: %s", name.c_str());
+                return false;
+            }
+        }
+        else if (type == "number")
+        {
+            if (!value.IsInt64() && !value.IsUint64() && !value.IsDouble())
+            {
+                LOGF("invalid json, not number in key: %s", name.c_str());
+                return false;
+            }
+        }
+        else if (type == "bool" || type == "boolean")
+        {
+            if (!value.IsBool())
+            {
+                LOGF("invalid json, not bool in key: %s", name.c_str());
+                return false;
+            }
+        }
+        else if (type == "object")
+        {
+            if (!value.IsObject())
+            {
+                LOGF("invalid json, not object in key: %s", name.c_str());
+                return false;
+            }
+            auto& children = (*it)/"children";
+            if (!!children && children.IsArray())
+            {
+                if (!validate_flat_schema(value, children))
+                {
+                    LOGF("invalid json, invalid nested object in key: %s", name.c_str());
+                    return false;
+                }
+            }
+        }
+        else if (type == "array")
+        {
+            // array of object
+            if (!value.IsArray())
+            {
+                LOGF("invalid json, not object in key: %s", name.c_str());
+                return false;
+            }
+            auto& children = (*it)/"children";
+            if (!!children && children.IsArray())
+            {
+                for (auto itChild = value.Begin(); itChild != value.End(); ++itChild)
+                {
+                    if (!validate_flat_schema(*itChild, children))
+                    {
+                        LOGF("invalid json, invalid nested array of object in key: %s", name.c_str());
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 } /* jsonkit */ 

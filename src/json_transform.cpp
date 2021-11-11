@@ -11,9 +11,10 @@ namespace jsonkit
 static
 std::map<std::string, json_slot_fn> s_mapSlot;
 
-void slot_register(const std::string& name, json_slot_fn slot)
+bool slot_register(const std::string& name, json_slot_fn slot)
 {
-    s_mapSlot.insert(std::make_pair(name, slot));
+    auto ret = s_mapSlot.insert(std::make_pair(name, slot));
+    return ret.second;
 }
 
 void CPathFiller::operator() (const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
@@ -64,7 +65,7 @@ void CPathFiller::operator() (const rapidjson::Value& src, rapidjson::Value& dst
             else if (leader == '=')
             {
                 std::string slotName;
-                const char* pSlash = strchr(pszKey+1, '/');
+                const char* pSlash = strchr(pszVal+1, '/');
                 if (pSlash)
                 {
                     slotName.assign(pszVal+1, pSlash);
@@ -85,6 +86,10 @@ void CPathFiller::operator() (const rapidjson::Value& src, rapidjson::Value& dst
                     {
                         (itSlot->second)(src, it->value, allocator);
                     }
+                }
+                else
+                {
+                    LOGF("no slot function registed: %s", slotName.c_str());
                 }
             }
         }

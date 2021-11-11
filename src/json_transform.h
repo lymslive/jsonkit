@@ -21,8 +21,14 @@ namespace jsonkit
  * */
 typedef std::function<void(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)> json_slot_fn;
 
-/** register a slot function, then may used by given name */
-void slot_register(const std::string& name, json_slot_fn slot);
+/** register a slot function, then may used by given name
+ * @param name the slot reference name
+ * @param slot function to generate a json value
+ * @return true if success, or false on fail, may because of repeated name
+ * @note Not thread safe, it's better to register on the init stage of
+ * application, or protect lock yourself within multiple thread. 
+ * */
+bool slot_register(const std::string& name, json_slot_fn slot);
 
 /** interface functor
  * @details just define a concept, can derive from it, but not defined virtual
