@@ -471,6 +471,12 @@ bool sql_insert(const rapidjson::Value& json, std::string& sql)
 
     STRCAT(sql, "INSERT INTO ", table, " ", set);
 
+    // need to select last auto increment id after insert
+    if (json/"last_insert_id" | false)
+    {
+        STRCAT(sql, "; SELECT last_insert_id()");
+    }
+
     return true;
 }
 
