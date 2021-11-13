@@ -11,6 +11,8 @@ DEF_TAST(rapidjson_scalar, "scalar json value in rapidjson")
 {
     rapidjson::Value json;
 
+    COUT(sizeof(json));
+
     DESC("json = 1");
     json = 1;
     COUT(json.GetInt());

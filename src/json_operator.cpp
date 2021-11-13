@@ -225,7 +225,7 @@ const rapidjson::Value* do_operate_path(const rapidjson::Value& json, const char
 
     if (any_slash)
     {
-        return point(json, path);
+        return path_point(json, path);
     }
 
     return nullptr;

@@ -14,18 +14,12 @@
 // collection of headers for each json topic
 #include "json_input.h"
 #include "json_output.h"
+#include "json_path.h"
 #include "json_schema.h"
 #include "json_compare.h"
 
 namespace jsonkit
 {
-
-/** get one sub-node from json by pointer path 
- * @param inJson: a json value
- * @param path: path in json dmo based from inJson
- * @return pointer to the sub-node, for null on failure
- * */
-const rapidjson::Value* point(const rapidjson::Value& inJson, const std::string& path);
 
 #ifdef HAS_GOOGLE_PROBUF
 // convert between json and protobuf

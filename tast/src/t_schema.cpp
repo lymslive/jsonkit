@@ -218,7 +218,9 @@ DEF_TAST(schema_flat, "test simple flat schema")
     inSchema.Parse(schema.c_str(), schema.size());
     COUT(inSchema.HasParseError(), false);
 
-    COUT(jsonkit::validate_flat_schema(inJson, inSchema), true);
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), true);
+    COUT(error.empty(), true);
 }
 
     DESC("lack of required key");
@@ -241,7 +243,9 @@ DEF_TAST(schema_flat, "test simple flat schema")
     inSchema.Parse(schema.c_str(), schema.size());
     COUT(inSchema.HasParseError(), false);
 
-    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error, "NO KEY /BBB");
 }
 
     DESC("dismatch type of some key value");
@@ -264,7 +268,9 @@ DEF_TAST(schema_flat, "test simple flat schema")
     inSchema.Parse(schema.c_str(), schema.size());
     COUT(inSchema.HasParseError(), false);
 
-    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error, "NOT STRING /bbb");
 }
 
 }
@@ -430,7 +436,9 @@ DEF_TAST(schema_flat_child, "test simple flat schema with children")
     inSchema.Parse(schema.c_str(), schema.size());
     COUT(inSchema.HasParseError(), false);
 
-    COUT(jsonkit::validate_flat_schema(inJson, inSchema), false);
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error, "NOT STRING /ddd/0/eee");
 }
 
 }

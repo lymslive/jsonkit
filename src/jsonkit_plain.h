@@ -56,8 +56,8 @@ bool compatible(const std::string& aJson, const std::string& bJson);
  * @param path: path in json dmo
  * @param outJson: stringfy of the sub-node in json path
  * @return bool: true if json path is valid and write to outJson*/
-bool point(const std::string& inJson, const std::string& path, std::string& outJson);
-bool point(const char* inJson, size_t inLen, const std::string& path, std::string& outJson);
+bool path_point(const std::string& inJson, const std::string& path, std::string& outJson);
+bool path_point(const char* inJson, size_t inLen, const std::string& path, std::string& outJson);
 
 #ifdef HAS_GOOGLE_PROBUF
 // convert between json and protobuf

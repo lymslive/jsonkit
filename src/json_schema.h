@@ -30,8 +30,9 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
 bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema, const std::string& basedir);
 
 /** validate json agaist one of non-standard schema
- * @param inJson, a json that must be object
- * @param inSchema, a json array where each item descibe one key that `inJson` should have
+ * @param [IN] json, a json that must be object
+ * @param [IN] schema, a json array where each item descibe one key that `inJson` should have
+ * @param [OUT] error, optinally store the error message if fail
  * @return true if `inJson` satisfy `inScheam`, otherwise false.
  * @details The so called flat schema is like following:
  * @code
@@ -47,7 +48,8 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
  * @endcode
  * When nested with children, only support object or array of object now.
  * */
-bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema);
+bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema);
+bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema, std::string& error);
 
 } /* jsonkit */ 
 

@@ -186,12 +186,12 @@ bool compatible(const std::string& aJson, const std::string& bJson)
 
 /* -------------------------------------------------- */
 
-bool point(const std::string& inJson, const std::string& path, std::string& outJson)
+bool path_point(const std::string& inJson, const std::string& path, std::string& outJson)
 {
-    return point(inJson.c_str(), inJson.size(), path, outJson);
+    return path_point(inJson.c_str(), inJson.size(), path, outJson);
 }
 
-bool point(const char* inJson, size_t inLen, const std::string& path, std::string& outJson)
+bool path_point(const char* inJson, size_t inLen, const std::string& path, std::string& outJson)
 {
     rapidjson::Document doc;
     if (!read_string(doc, inJson, inLen))
@@ -199,7 +199,7 @@ bool point(const char* inJson, size_t inLen, const std::string& path, std::strin
         return false;
     }
 
-    const rapidjson::Value* pJson = point(doc, path);
+    const rapidjson::Value* pJson = path_point(doc, path);
     if (!pJson)
     {
         return false;

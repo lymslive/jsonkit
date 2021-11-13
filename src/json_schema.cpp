@@ -261,19 +261,51 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
     return schema.Validate(inJson);
 }
 
-bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value& inSchema)
+} /* jsonkit */ 
+
+/* ************************************************************ */
+// for flat schema validate
+
+namespace jsonkit
 {
-    if (!inJson.IsObject())
+
+class CFlatSchema
+{
+public:
+    bool Validate(const rapidjson::Value& json, const rapidjson::Value& schema)
+    {
+        m_path.clear();
+        m_error.clear();
+        return doValidate(json, schema);
+    }
+
+    void GetError(std::string& str) const
+    {
+        str.append(m_error).append(" ").append(m_path);
+    }
+
+private:
+    bool doValidate(const rapidjson::Value& json, const rapidjson::Value& schema);
+
+private:
+    std::string m_path;
+    std::string m_error;
+};
+
+bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Value& schema)
+{
+    if (!json.IsObject())
     {
         return false;
     }
 
-    if (!inSchema.IsArray())
+    if (!schema.IsArray())
     {
         return false;
     }
 
-    for (auto it = inSchema.Begin(); it != inSchema.End(); ++it)
+    std::string save_path = m_path;
+    for (auto it = schema.Begin(); it != schema.End(); ++it)
     {
         if (!it->IsObject())
         {
@@ -290,23 +322,28 @@ bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value
             continue;
         }
 
-        auto& value = inJson/name;
+        m_path = save_path;
+        m_path.append("/").append(name);
+
+        auto& value = json/name;
         if (!value)
         {
-            LOGF("invalid json, no key: %s", name.c_str());
+            m_error = "NO KEY";
+            LOGF("invalid json, no key: %s", m_path.c_str());
             return false;
         }
 
         std::string type = (*it)/"type" | "";
         if (type.empty())
         {
-           continue; 
+            continue; 
         }
         else if (type == "string")
         {
             if (!value.IsString())
             {
-                LOGF("invalid json, not string in key: %s", name.c_str());
+                m_error = "NOT STRING";
+                LOGF("invalid json, not string in key: %s", m_path.c_str());
                 return false;
             }
         }
@@ -314,7 +351,8 @@ bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value
         {
             if (!value.IsInt64() && !value.IsUint64() && !value.IsDouble())
             {
-                LOGF("invalid json, not number in key: %s", name.c_str());
+                m_error = "NOT NUMBER";
+                LOGF("invalid json, not number in key: %s", m_path.c_str());
                 return false;
             }
         }
@@ -322,7 +360,8 @@ bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value
         {
             if (!value.IsBool())
             {
-                LOGF("invalid json, not bool in key: %s", name.c_str());
+                m_error = "NOT BOOL";
+                LOGF("invalid json, not bool in key: %s", m_path.c_str());
                 return false;
             }
         }
@@ -330,13 +369,14 @@ bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value
         {
             if (!value.IsObject())
             {
-                LOGF("invalid json, not object in key: %s", name.c_str());
+                m_error = "NOT OBJECT";
+                LOGF("invalid json, not object in key: %s", m_path.c_str());
                 return false;
             }
             auto& children = (*it)/"children";
             if (!!children && children.IsArray())
             {
-                if (!validate_flat_schema(value, children))
+                if (!doValidate(value, children))
                 {
                     LOGF("invalid json, invalid nested object in key: %s", name.c_str());
                     return false;
@@ -348,15 +388,18 @@ bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value
             // array of object
             if (!value.IsArray())
             {
-                LOGF("invalid json, not object in key: %s", name.c_str());
+                m_error = "NOT ARRAY";
+                LOGF("invalid json, not object in key: %s", m_path.c_str());
                 return false;
             }
             auto& children = (*it)/"children";
             if (!!children && children.IsArray())
             {
+                int i = 0;
                 for (auto itChild = value.Begin(); itChild != value.End(); ++itChild)
                 {
-                    if (!validate_flat_schema(*itChild, children))
+                    m_path.append("/").append(std::to_string(i++));
+                    if (!doValidate(*itChild, children))
                     {
                         LOGF("invalid json, invalid nested array of object in key: %s", name.c_str());
                         return false;
@@ -367,6 +410,23 @@ bool validate_flat_schema(const rapidjson::Value& inJson, const rapidjson::Value
     }
 
     return true;
+}
+
+bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema)
+{
+    CFlatSchema obj;
+    return obj.Validate(json, schema);
+}
+
+bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema, std::string& error)
+{
+    CFlatSchema obj;
+    bool ret = obj.Validate(json, schema);
+    if (!ret)
+    {
+        obj.GetError(error);
+    }
+    return ret;
 }
 
 } /* jsonkit */ 
