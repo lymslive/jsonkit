@@ -647,3 +647,28 @@ std::string jsonText = R"json({
         COUT(sql, sqlExpect);
     }
 }
+
+DEF_TAST(sql_group, "select with group")
+{
+    DESC("SELECT ... WHERE ... GROUP BY ... ");
+    {
+std::string jsonText = R"json({
+    "table": "t_name LEFT JOIN t_score",
+    "field": "f_id, min(f_a) as min, max(f_b) as max",
+    "group": "f_id",
+    "having": {
+        "id": [100, 200, 300]
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "SELECT f_id, min(f_a) as min, max(f_b) as max FROM t_name LEFT JOIN t_score GROUP BY f_id HAVING 1=1 AND id IN (100,200,300)";
+        COUT(jsonkit::sql_select(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+}

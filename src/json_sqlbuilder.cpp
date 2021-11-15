@@ -36,6 +36,38 @@ bool sql_check_word(std::string& sql)
     return true;
 }
 
+std::string sql_simple_word(const rapidjson::Value& json, const char* prefix = nullptr)
+{
+    if (!json || !json.IsString())
+    {
+        return "";
+    }
+    std::string word = json.GetString();
+    if (!word.empty() && sql_check_word(word) && prefix)
+    {
+        return std::string(prefix).append(word);
+    }
+    return word;
+}
+
+inline
+std::string sql_table(const rapidjson::Value& json)
+{
+    return sql_simple_word(json);
+}
+
+inline
+std::string sql_order(const rapidjson::Value& json)
+{
+    return sql_simple_word(json, "ORDER BY ");
+}
+
+inline
+std::string sql_group(const rapidjson::Value& json)
+{
+    return sql_simple_word(json, "GROUP BY ");
+}
+
 std::string sqlfy_value(const rapidjson::Value& json)
 {
     if (json.IsObject() || json.IsArray())
@@ -91,15 +123,6 @@ std::string sqlfy_value(const rapidjson::Value& json)
 
     // numeric value
     return stringfy(json);
-}
-
-std::string sql_table(const rapidjson::Value& json)
-{
-    std::string table;
-    table |= json;
-    //LOGD("read table: %s", table.c_str());
-    sql_check_word(table);
-    return table;
 }
 
 std::string sql_field(const rapidjson::Value& json)
@@ -329,14 +352,15 @@ std::string sql_mulcmp(const rapidjson::Value& json, const std::string& field)
  * }
  * @endcode 
  * */
-std::string sql_where(const rapidjson::Value& json)
+std::string sql_where(const rapidjson::Value& json, const char* prefix = "WHERE")
 {
     if (!json || !json.IsObject() || json.ObjectEmpty())
     {
         return "";
     }
 
-    std::string sql("WHERE 1=1");
+    std::string sql(prefix);
+    sql.append(" 1=1");
     for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
     {
         if (it->value.IsNull())
@@ -373,21 +397,6 @@ std::string sql_where(const rapidjson::Value& json)
     }
 
     return sql;
-}
-
-std::string sql_order(const rapidjson::Value& json)
-{
-    std::string sql("ORDER BY ");
-    if (json.IsString())
-    {
-        std::string order = json.GetString();
-        if (sql_check_word(order))
-        {
-            return STRCAT(sql, order);
-        }
-    }
-
-    return "";
 }
 
 // only return valid limit value, otherwise empty string
@@ -548,6 +557,17 @@ bool sql_select(const rapidjson::Value& json, std::string& sql)
     if (!where.empty())
     {
         STRCAT(sql, " ", where);
+    }
+
+    std::string group = sql_group(json/"group");
+    if (!group.empty())
+    {
+        STRCAT(sql, " ", group);
+        std::string having = sql_where(json/"having", "HAVING");
+        if (!having.empty())
+        {
+            STRCAT(sql, " ", having);
+        }
     }
 
     std::string order = sql_order(json/"order");
