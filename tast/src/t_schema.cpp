@@ -442,3 +442,137 @@ DEF_TAST(schema_flat_child, "test simple flat schema with children")
 }
 
 }
+
+DEF_TAST(schema_flat_value, "test flat schema check value")
+{
+    DESC("check string minLength");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true, "minLength": 4 }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error);
+    COUT(error.empty(), false);
+}
+
+    DESC("check string maxLength");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true, "maxLength": 2 }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error);
+    COUT(error.empty(), false);
+}
+
+    DESC("check string pattern");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true, "pattern": "[a-z]+" }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error);
+    COUT(error.empty(), false);
+}
+
+    DESC("check number minValue");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true, "minValue": 10 },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error);
+    COUT(error.empty(), false);
+}
+
+    DESC("check number maxValue");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true, "maxValue": 1 },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
+    COUT(error);
+    COUT(error.empty(), false);
+}
+
+}

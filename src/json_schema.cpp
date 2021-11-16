@@ -4,6 +4,8 @@
  * @date 2021-10-27
  * @brief implementation for json scheam tools
  * */
+#include <regex>
+
 #include "json_schema.h"
 #include "json_input.h"
 #include "json_output.h"
@@ -287,10 +289,68 @@ public:
 private:
     bool doValidate(const rapidjson::Value& json, const rapidjson::Value& schema);
 
+    bool checkString(const rapidjson::Value& json, const rapidjson::Value& value);
+    bool checkNumber(const rapidjson::Value& json, const rapidjson::Value& value);
+
 private:
     std::string m_path;
     std::string m_error;
 };
+
+bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Value& value)
+{
+    if (!value.IsString())
+    {
+        return false;
+    }
+
+    size_t length = value.GetStringLength();
+    size_t max = json/"maxLength" | 0;
+    if (max > 0 && length > max)
+    {
+        m_error = "STRING TOO LARGE";
+        return false;
+    }
+    size_t min = json/"minLength" | 0;
+    if (min > 0 && length < min)
+    {
+        m_error = "STRING TOO SMALL";
+        return false;
+    }
+
+    auto& pattern = json/"pattern";
+    if (!!pattern && pattern.IsString() && pattern.GetStringLength() > 0)
+    {
+        if (!std::regex_match(value.GetString(), std::regex(pattern.GetString())));
+        {
+            m_error = "STRING NOT MATCH PATTERN";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool CFlatSchema::checkNumber(const rapidjson::Value& json, const rapidjson::Value& value)
+{
+    // maybe check int64 is enough, for normal case
+    if (value.IsInt64())
+    {
+        int64_t max = 0;
+        if (scalar_value(max, json/"maxValue") && value.GetInt64() > max)
+        {
+            m_error = "NUMBER TOO LARGE";
+            return false;
+        }
+        int64_t min = 0;
+        if (scalar_value(min, json/"minValue") && value.GetInt64() < min)
+        {
+            m_error = "NUMBER TOO SMALL";
+            return false;
+        }
+    }
+    return true;
+}
 
 bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Value& schema)
 {
@@ -333,6 +393,12 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
             return false;
         }
 
+        // do not check type, as the type may variate
+        if ((*it)/"vartype" | false)
+        {
+            continue;
+        }
+
         std::string type = (*it)/"type" | "";
         if (type.empty())
         {
@@ -346,6 +412,10 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
                 LOGF("invalid json, not string in key: %s", m_path.c_str());
                 return false;
             }
+            else if(!checkString(*it, value))
+            {
+                return false;
+            }
         }
         else if (type == "number")
         {
@@ -353,6 +423,10 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
             {
                 m_error = "NOT NUMBER";
                 LOGF("invalid json, not number in key: %s", m_path.c_str());
+                return false;
+            }
+            else if(!checkNumber(*it, value))
+            {
                 return false;
             }
         }

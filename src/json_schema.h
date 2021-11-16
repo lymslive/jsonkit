@@ -34,18 +34,18 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
  * @param [IN] schema, a json array where each item descibe one key that `inJson` should have
  * @param [OUT] error, optinally store the error message if fail
  * @return true if `inJson` satisfy `inScheam`, otherwise false.
- * @details The so called flat schema is like following:
- * @code
- * [
- *   {
- *     "name": "some key", // the key name
- *     "type": "number|string", // the type of key
- *     "required": true; // is the key requried or optional
- *     "children": [{}, {}, ...] // if type if object or array of object
- *   },
- *   ...
- * ]
- * @endcode
+ * @details The so called flat schema is array of object, each may have
+ * following keys:
+ * - name: the name of key
+ * - required: the key is required or optional, default false
+ * - type: the type of key
+ * - vartype: the type may be variable, so not check type
+ * - minValue: min value for number value
+ * - maxValue: max value for number value
+ * - minLenght: min length for string value
+ * - maxLenght: max length for string value
+ * - pattern:  the regexp pattern for string value
+ * - children: nested flat schema
  * When nested with children, only support object or array of object now.
  * */
 bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema);
