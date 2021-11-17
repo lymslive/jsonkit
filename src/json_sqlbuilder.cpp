@@ -10,6 +10,21 @@ namespace jsonkit
 /* ************************************************************ */
 // static helper functions
 
+static sql_config_t s_config;
+
+sql_config_t set_sql_config(const sql_config_t* cfg)
+{
+    if (!cfg)
+    {
+        return s_config;
+    }
+    sql_config_t old = s_config;
+    s_config = *cfg;
+    return old;
+}
+
+const char SINGLE_QUOTE = '\'';
+
 /** short for chained string.appen(?).append(?)....
  * @note incorrect: string += ? += ? += ...
  * */
@@ -78,20 +93,20 @@ std::string sqlfy_value(const rapidjson::Value& json)
     if (json.IsString())
     {
         std::string sql;
-        sql += '\'';
+        sql += SINGLE_QUOTE;
         for (const char* str = json.GetString(); *str != '\0'; ++str)
         {
-            if (*str == '\'')
+            if (*str == SINGLE_QUOTE)
             {
-                sql += '\'';
-                sql += '\'';
+                sql += SINGLE_QUOTE;
+                sql += SINGLE_QUOTE;
             }
             else
             {
                 sql += *str;
             }
         }
-        sql += '\'';
+        sql += SINGLE_QUOTE;
 
         // keep origin string in `` quote, eg. `now()` `null`
         if (sql.size() > 4 && sql[1] == '`' && sql[sql.size()-2] == '`')
@@ -322,8 +337,27 @@ std::string sql_mulcmp(const rapidjson::Value& json, const std::string& field)
         }
         else if (op == "like")
         {
-            // todo: could auto add %like% or not
-            STRCAT(sql, " AND ", field, " like ", sqlfy_value(it->value));
+            std::string like = sqlfy_value(it->value);
+            if (like.size() > 2 && like.front() == SINGLE_QUOTE && like.back() == SINGLE_QUOTE)
+            {
+                if (s_config.fix_like_value)
+                {
+                    std::string fix;
+                    fix.push_back(SINGLE_QUOTE);
+                    if (s_config.fix_like_value & SQL_LIKE_PREFIX)
+                    {
+                        fix.push_back('%');
+                    }
+                    fix += like.substr(1, like.size()-2);
+                    if (s_config.fix_like_value & SQL_LIKE_POSTFIX)
+                    {
+                        fix.push_back('%');
+                    }
+                    fix.push_back(SINGLE_QUOTE);
+                    like.swap(fix);
+                }
+                STRCAT(sql, " AND ", field, " like ", like);
+            }
         }
         else if (op == "null")
         {
@@ -513,9 +547,13 @@ bool sql_update(const rapidjson::Value& json, std::string& sql)
         return false;
     }
 
-    STRCAT(sql, "UPDATE ", table, " ", set);
-
     std::string where = sql_where(json/"where");
+    if (where.empty() && s_config.refuse_update_without_where)
+    {
+        return false;
+    }
+
+    STRCAT(sql, "UPDATE ", table, " ", set);
     if (!where.empty())
     {
         STRCAT(sql, " ", where);
@@ -612,13 +650,17 @@ bool sql_delete(const rapidjson::Value& json, std::string& sql)
     }
 
     std::string where = sql_where(json/"where");
-    if (where.empty())
+    if (where.empty() && s_config.refuse_delete_without_where)
     {
         // delete must have where
         return false;
     }
 
-    STRCAT(sql, "DELETE FROM ", table, " ", where);
+    STRCAT(sql, "DELETE FROM ", table);
+    if (!where.empty())
+    {
+        STRCAT(sql, " ", where);
+    }
 
     std::string order = sql_order(json/"order");
     if (!order.empty())

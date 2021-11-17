@@ -57,7 +57,7 @@ DEF_TAST(sql_insert, "build insert sql")
 
 DEF_TAST(sql_update, "build update sql")
 {
-    DESC("UPDATE ... SET ...");
+    DESC("UPDATE ... SET ... (refuse by default)");
     {
         std::string jsonText = R"json({
     "table": "t_name",
@@ -74,8 +74,9 @@ DEF_TAST(sql_update, "build update sql")
 
         std::string sql;
         std::string sqlExpect = "UPDATE t_name SET f_1='val-11',f_3=323";
-        COUT(jsonkit::sql_update(doc, sql), true);
-        COUT(sql, sqlExpect);
+        COUT(jsonkit::sql_update(doc, sql), false);
+        COUT(sql.empty(), true);
+        // COUT(sql, sqlExpect);
     }
 
     DESC("UPDATE ... SET ... WHERE ...");
@@ -671,4 +672,100 @@ std::string jsonText = R"json({
         COUT(jsonkit::sql_select(doc, sql), true);
         COUT(sql, sqlExpect);
     }
+}
+
+DEF_TAST(sql_config, "change sql config")
+{
+    DESC("like default add '%%' postfix");
+    {
+std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "name": {
+           "like": "abc"
+        }
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND name like 'abc%'";
+        COUT(jsonkit::sql_select(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("change config");
+    jsonkit::sql_config_t cfg = jsonkit::set_sql_config(nullptr);
+    cfg.fix_like_value = jsonkit::SQL_LIKE_POSTFIX | jsonkit::SQL_LIKE_PREFIX;
+    cfg.refuse_delete_without_where = false;
+    cfg.refuse_update_without_where = false;
+    // set and save the config
+    cfg = set_sql_config(&cfg);
+
+    DESC("like add '%%' in both end");
+    {
+std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "name": {
+           "like": "abc"
+        }
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND name like '%abc%'";
+        COUT(jsonkit::sql_select(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("DELET without WHERE will not fail");
+    {
+std::string jsonText = R"json({
+    "table": "t_name"
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "DELETE FROM t_name";
+        COUT(jsonkit::sql_delete(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("UPDATE ... SET ... will not fail");
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "value": {
+        "f_1": "val-11",
+        "f_3": 323
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "UPDATE t_name SET f_1='val-11',f_3=323";
+        COUT(jsonkit::sql_update(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    // restore the config
+    set_sql_config(&cfg);
 }
