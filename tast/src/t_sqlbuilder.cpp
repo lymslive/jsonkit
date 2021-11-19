@@ -53,6 +53,28 @@ DEF_TAST(sql_insert, "build insert sql")
         COUT(jsonkit::sql_insert(doc, sql), true);
         COUT(sql, sqlExpect);
     }
+
+    DESC("batch INSERT ... (field list) VALUES (value list) ...");
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "head": ["f_1", "f_2", "f_3"],
+    "value": [
+        ["val-1", "val-2", 333],
+        ["val-1.2", "val-2.2", 444]
+    ]
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "INSERT INTO t_name (f_1,f_2,f_3) VALUES ('val-1','val-2',333), ('val-1.2','val-2.2',444)";
+        COUT(jsonkit::sql_insert(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
 }
 
 DEF_TAST(sql_update, "build update sql")
@@ -295,6 +317,27 @@ std::string jsonText = R"json({
         std::string sql;
         std::string sqlExpect = "DELETE FROM t_name";
         COUT(jsonkit::sql_delete(doc, sql), false);
+        COUT(sql.empty(), true);
+    }
+
+    DESC("DELET without where will fail");
+    {
+std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "id": null
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "DELETE FROM t_name";
+        COUT(jsonkit::sql_delete(doc, sql), false);
+        COUT(sql);
         COUT(sql.empty(), true);
     }
 

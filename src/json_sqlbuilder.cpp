@@ -271,6 +271,73 @@ std::string sql_values(const rapidjson::Value& json)
     return sql;
 }
 
+/** Generate: (field1, feild2, ...) VALUES (value1, value2, ...), ...
+ * @param json: array of array which has the same fields order
+ * @param head: array of string specify the field names
+ * */
+std::string sql_values(const rapidjson::Value& json, const rapidjson::Value& head)
+{
+    std::vector<std::string> field;
+    for (auto it = head.Begin(); it != head.End(); ++it)
+    {
+        std::string fname = (*it) | "";
+        if (fname.empty() || !sql_check_word(fname))
+        {
+            return "";
+        }
+        field.push_back(fname);
+    }
+
+    std::string fieldstr;
+    for (auto& item : field)
+    {
+        STRCAT(fieldstr, item, ",");
+    }
+    if (!fieldstr.empty())
+    {
+        fieldstr.pop_back();
+    }
+
+    std::string value;
+    for (auto it = json.Begin(); it != json.End(); ++it)
+    {
+        if (!it->IsArray())
+        {
+            continue;
+        }
+        if (it->Size() != field.size())
+        {
+            return "";
+        }
+
+        std::string row;
+        for (auto jt = it->Begin(); jt != it->End(); ++jt)
+        {
+            STRCAT(row, sqlfy_value(*jt), ",");
+        }
+        if (!row.empty())
+        {
+            row.pop_back();
+        }
+
+        if (!value.empty())
+        {
+            STRCAT(value, ", ");
+        }
+        STRCAT(value, "(", row, ")");
+    }
+
+    if (value.empty())
+    {
+        return "";
+    }
+
+    std::string sql;
+    STRCAT(sql, "(", fieldstr, ")", " VALUES ", value);
+
+    return sql;
+}
+
 /** generate a list of value (va1,val2,...) from json array */
 std::string sql_in(const rapidjson::Value& json)
 {
@@ -497,7 +564,12 @@ bool sql_insert(const rapidjson::Value& json, std::string& sql)
     }
 
     std::string set;
-    if (value.IsObject() && !value.ObjectEmpty())
+    const rapidjson::Value& head = json / "head";
+    if (!!head && head.IsArray() && value.IsArray())
+    {
+        set = sql_values(value, head);
+    }
+    else if (value.IsObject() && !value.ObjectEmpty())
     {
         set = sql_set(value);
     }
