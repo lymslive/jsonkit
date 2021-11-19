@@ -119,4 +119,115 @@ void merge_fill(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::D
     return fill(src, dst, allocator);
 }
 
+static
+void do_array2object(const std::string& key, rapidjson::Value& json,rapidjson::Document::AllocatorType& allocator)
+{
+    if (key.empty())
+    {
+        return;
+    }
+
+    if (json.IsArray())
+    {
+        rapidjson::Value object;
+        object.SetObject();
+
+        for (auto it = json.Begin(); it != json.End(); ++it)
+        {
+            if (!it->IsObject())
+            {
+                continue;
+            }
+
+            auto itKey = it->FindMember(rapidjson::Value(key.c_str(), key.size()));
+            if (itKey == it->MemberEnd())
+            {
+                continue;
+            }
+
+            // save the json node with key
+            rapidjson::Value jsKey, jsValue;
+            jsKey = itKey->name;
+            jsValue = itKey->value;
+
+            // remove out the key
+            it->RemoveMember(itKey);
+
+            auto itNew = object.FindMember(jsValue);
+            if (itNew != object.MemberEnd())
+            {
+                if (itNew->value.IsArray())
+                {
+                    itNew->value.PushBack(*it, allocator);
+                }
+            }
+            else
+            {
+                size_t left = it->MemberCount();
+                if (left > 1)
+                {
+                    // add array of shorter object item
+                    rapidjson::Value array;
+                    array.SetArray();
+                    array.PushBack(*it, allocator);
+                    object.AddMember(jsValue, array, allocator);
+                }
+                else if (left == 1)
+                {
+                    // add scalar
+                    object.AddMember(jsValue, it->MemberBegin()->value, allocator);
+                }
+                else
+                {
+                    // add null
+                    object.AddMember(jsValue, rapidjson::Value(), allocator);
+                }
+            }
+        }
+
+        // move the new built object to current json array
+        json = object;
+    }
+    else if (json.IsObject())
+    {
+        // recursive deeper
+        for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
+        {
+            do_array2object(key, it->value, allocator);
+        }
+    }
+}
+
+void array2object(const std::string& key, rapidjson::Value& json,rapidjson::Document::AllocatorType& allocator)
+{
+    size_t slash = key.find('/');
+    if (slash == std::string::npos)
+    {
+        return do_array2object(key, json, allocator);
+    }
+
+    size_t head = 0;
+    while (slash != std::string::npos)
+    {
+        std::string part = key.substr(head, slash - head);
+        do_array2object(part, json, allocator);
+        head = slash + 1;
+        slash = key.find('/', head);
+    }
+
+    if (head < key.size())
+    {
+        std::string part = key.substr(head);
+        do_array2object(part, json, allocator);
+    }
+}
+
+void array2object(const std::vector<std::string>& key, rapidjson::Value& json,rapidjson::Document::AllocatorType& allocator)
+{
+    for (auto& item : key)
+    {
+        do_array2object(item, json, allocator);
+    }
+}
+
 } /* jsonkit */ 

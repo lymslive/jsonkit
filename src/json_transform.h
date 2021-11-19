@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 #include "rapidjson/document.h"
 
 namespace jsonkit
@@ -64,6 +65,18 @@ void merge(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Docume
  * */
 void merge_fill(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
 
+/** reshap array to object
+ * @param key: the common key in array of object
+ * @param json: a json array of object
+ * @param allocator: the allocator to modify json
+ * @details When each array item is object, which has the common key, lift the
+ * value of the key as the new object's key.
+ * Can lift multiple level, provided key is as `key1/key2`, or vector of
+ * string.
+ * */
+void array2object(const std::string& key, rapidjson::Value& json,rapidjson::Document::AllocatorType& allocator);
+
+void array2object(const std::vector<std::string>& key, rapidjson::Value& json,rapidjson::Document::AllocatorType& allocator);
 } /* jsonkit */ 
 
 #endif /* end of include guard: JSON_TRANSFORM_H__ */
