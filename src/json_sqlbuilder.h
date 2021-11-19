@@ -55,6 +55,19 @@ bool sql_select(const rapidjson::Value& json, std::string& sql);
 bool sql_count(const rapidjson::Value& json, std::string& sql);
 bool sql_delete(const rapidjson::Value& json, std::string& sql);
 
+/** class interface for SQL builder. */
+struct CSqlBuilder
+{
+    bool Insert(const rapidjson::Value& json, std::string& sql);
+    bool Update(const rapidjson::Value& json, std::string& sql);
+    bool Select(const rapidjson::Value& json, std::string& sql);
+    bool Count(const rapidjson::Value& json, std::string& sql);
+    bool Delete(const rapidjson::Value& json, std::string& sql);
+
+    sql_config_t& Config() { return m_config; }
+    sql_config_t m_config;
+};
+
 } /* jsonkit */ 
 
 #endif /* end of include guard: JSON_SQLBUILDER_H__ */
