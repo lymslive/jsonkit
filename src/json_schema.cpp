@@ -321,10 +321,23 @@ bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Val
     auto& pattern = json/"pattern";
     if (!!pattern && pattern.IsString() && pattern.GetStringLength() > 0)
     {
-        if (!std::regex_match(value.GetString(), std::regex(pattern.GetString())));
+        try
         {
-            m_error = "STRING NOT MATCH PATTERN";
-            return false;
+            std::regex exp(pattern.GetString());
+            bool match = std::regex_match(value.GetString(), exp);
+            if (!match)
+            {
+                LOGF("%s !~ %s", value.GetString(), pattern.GetString());
+                m_error = "STRING NOT MATCH PATTERN";
+                return false;
+            }
+        }
+        catch (std::regex_error)
+        {
+            LOGF("PATTERN INVALID: %s", pattern.GetString());
+            m_error = "STRING PATTERN INVALID";
+            // only log, not check
+            // return false;
         }
     }
 
