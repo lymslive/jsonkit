@@ -50,6 +50,7 @@ sql_config_t set_sql_config(const sql_config_t* cfg);
 
 /** build sql statement from specific json struct */
 bool sql_insert(const rapidjson::Value& json, std::string& sql);
+bool sql_replace(const rapidjson::Value& json, std::string& sql);
 bool sql_update(const rapidjson::Value& json, std::string& sql);
 bool sql_select(const rapidjson::Value& json, std::string& sql);
 bool sql_count(const rapidjson::Value& json, std::string& sql);
@@ -59,6 +60,7 @@ bool sql_delete(const rapidjson::Value& json, std::string& sql);
 struct CSqlBuilder
 {
     bool Insert(const rapidjson::Value& json, std::string& sql);
+    bool Replace(const rapidjson::Value& json, std::string& sql);
     bool Update(const rapidjson::Value& json, std::string& sql);
     bool Select(const rapidjson::Value& json, std::string& sql);
     bool Count(const rapidjson::Value& json, std::string& sql);
