@@ -96,9 +96,10 @@ DEF_TAST(sql_update, "build update sql")
 
         std::string sql;
         std::string sqlExpect = "UPDATE t_name SET f_1='val-11',f_3=323";
+        DESC("will generate sql, but return false");
         COUT(jsonkit::sql_update(doc, sql), false);
-        COUT(sql.empty(), true);
-        // COUT(sql, sqlExpect);
+        // COUT(sql.empty(), true);
+        COUT(sql, sqlExpect);
     }
 
     DESC("UPDATE ... SET ... WHERE ...");

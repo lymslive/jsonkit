@@ -61,7 +61,8 @@ std::string& STRCAT(std::string& str, T&& first, Types&&... rest)
 class CSqlBuildBuffer
 {
 public:
-    CSqlBuildBuffer(sql_config_t* pConfig = nullptr) : m_pConfig(pConfig)
+    CSqlBuildBuffer(std::string& buffer, sql_config_t* pConfig = nullptr)
+        : m_buffer(buffer), m_pConfig(pConfig)
     {
         if (!m_pConfig)
         {
@@ -70,15 +71,13 @@ public:
     }
 
     typedef CSqlBuildBuffer SelfType;
-    CSqlBuildBuffer(const SelfType& that) : m_pConfig(that.m_pConfig)
-    {}
+    CSqlBuildBuffer(const SelfType& that) =  delete;
+    SelfType& operator=(const SelfType& that) = delete;
 
+    size_t Size() { return m_buffer.size(); }
     const char* c_str() { return m_buffer.c_str(); }
     const std::string& Buffer() { return m_buffer; }
 
-public:
-    bool Insert(const rapidjson::Value& json);
-    bool Replace(const rapidjson::Value& json);
 
 public:
     SelfType& Append(char ch)
@@ -116,26 +115,51 @@ public:
     }
 
     bool PutWord(const char* psz, size_t count);
-    bool PutValue(const char* psz, size_t count);
     bool PutWord(const rapidjson::Value& json);
+    bool PutWord(const rapidjson::Value& json, std::string& last);
+    bool PutEscape(const char* psz, size_t count);
+    bool PutEscape(const rapidjson::Value& json);
+    bool PutValue(const char* psz, size_t count);
     bool PutValue(const rapidjson::Value& json);
 
-    bool PutWord(const rapidjson::Value& json, std::string& last);
 
     bool PushTable(const rapidjson::Value& json);
     bool PushField(const rapidjson::Value& json);
+
     bool PushSetValue(const rapidjson::Value& json);
     bool PushSetValue(const rapidjson::Value& json, const rapidjson::Value& head);
-    bool PushWhere(const rapidjson::Value& json);
-
-protected:
-    bool DoInsert(const rapidjson::Value& json);
     bool DoSetValue(const rapidjson::Value& json);
     bool DoBatchValue(const rapidjson::Value& json);
 
+    bool DoPushWhere(const rapidjson::Value& json);
+    bool DoCmpWhere(const rapidjson::Value& json, const std::string& field);
+    bool PushWhere(const rapidjson::Value& json);
+    bool PushHaving(const rapidjson::Value& json);
+    bool PushGroup(const rapidjson::Value& json);
+    bool PushOrder(const rapidjson::Value& json);
+    bool PushLimit(const rapidjson::Value& json);
+
+protected:
+    bool DoInsert(const rapidjson::Value& json);
+
+public: // user interface for typical sql statements
+
+    bool Insert(const rapidjson::Value& json)
+    {
+        Append("INSERT INTO ");
+        return DoInsert(json);
+    }
+    bool Replace(const rapidjson::Value& json)
+    {
+        Append("REPLACE INTO ");
+        return DoInsert(json);
+    }
+
+    bool Update(const rapidjson::Value& json);
+
 protected:
     sql_config_t* m_pConfig;
-    std::string m_buffer;
+    std::string& m_buffer;
 };
 
 bool CSqlBuildBuffer::PutWord(const char* psz, size_t count)
@@ -155,6 +179,21 @@ bool CSqlBuildBuffer::PutWord(const char* psz, size_t count)
         Append(ch);
     }
 
+    return true;
+}
+
+bool CSqlBuildBuffer::PutEscape(const char* psz, size_t count)
+{
+    for (size_t i = 0; i < count; ++i)
+    {
+        char ch = psz[i];
+        // escape single quote: ' --> ''
+        if (ch == SINGLE_QUOTE)
+        {
+            Append(ch);
+        }
+        Append(ch);
+    }
     return true;
 }
 
@@ -179,31 +218,43 @@ bool CSqlBuildBuffer::PutValue(const char* psz, size_t count)
     }
 
     Append(SINGLE_QUOTE);
-    for (size_t i = 0; i < count; ++i)
-    {
-        char ch = psz[i];
-        // escape single quote: ' --> ''
-        if (ch == SINGLE_QUOTE)
-        {
-            Append(ch);
-        }
-        Append(ch);
-    }
+    PutEscape(psz, count);
     Append(SINGLE_QUOTE);
 
     return true;
 }
 
+bool CSqlBuildBuffer::PutEscape(const rapidjson::Value& json)
+{
+    if (json.IsString())
+    {
+        return PutEscape(json.GetString(), json.GetStringLength());
+    }
+    return false;
+}
+
+// a single string word or list of word separated by ,
 bool CSqlBuildBuffer::PutWord(const rapidjson::Value& json)
 {
     if (json.IsString())
     {
         return PutWord(json.GetString(), json.GetStringLength());
     }
-    else
+    else if (json.IsArray() && !json.Empty())
     {
-        return false;
+        for (auto it = json.Begin(); it != json.End(); ++it)
+        {
+            if (!it->IsString())
+            {
+                return false;
+            }
+            SQL_ASSERT(PutWord(*it));
+            Append(',');
+        }
+        PopEnd(',');
+        return true;
     }
+    return false;
 }
 
 // put a word in buffer, and save a copy in string last
@@ -220,6 +271,18 @@ bool CSqlBuildBuffer::PutValue(const rapidjson::Value& json)
     if (json.IsString())
     {
         return PutValue(json.GetString(), json.GetStringLength());
+    }
+    else if (json.IsArray())
+    {
+        Append('(');
+        for (auto it = json.Begin(); it != json.End(); ++it)
+        {
+            SQL_ASSERT(PutValue(*it));
+            Append(',');
+        }
+        PopEnd(',');
+        Append(')');
+        return true;
     }
     else if (json.IsObject() || json.IsArray())
     {
@@ -266,16 +329,7 @@ bool CSqlBuildBuffer::PushField(const rapidjson::Value& json)
     }
     else if (json.IsArray())
     {
-        for (auto it = json.Begin(); it != json.End(); ++it)
-        {
-            if (it->IsString())
-            {
-                PutWord(it->GetString(), it->GetStringLength());
-                Append(',');
-            }
-        }
-        PopEnd(',');
-        return true;
+        return PutWord(json);
     }
     return false;
 }
@@ -327,8 +381,8 @@ bool CSqlBuildBuffer::DoBatchValue(const rapidjson::Value& json)
 
     Append(' ');
     std::vector<std::string> field;
-    CSqlBuildBuffer another(*this);
-    std::string value;
+    std::string value; // store first row value with field
+    CSqlBuildBuffer another(value, m_pConfig);
     Append('(');
     another.Append('(');
     for (auto it = first.MemberBegin(); it != first.MemberEnd(); ++it)
@@ -352,7 +406,7 @@ bool CSqlBuildBuffer::DoBatchValue(const rapidjson::Value& json)
     another.Append(')');
 
     Append(" VALUES ");
-    Append(another);
+    Append(value);
 
     uint32_t size = json.Size();
     for (uint32_t i = 1; i < size; ++i)
@@ -392,12 +446,7 @@ bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson
 
     Append(' ');
     Append('(');
-    for (auto it = head.Begin(); it != head.End(); ++it)
-    {
-        SQL_ASSERT(PutWord(*it));
-        Append(',');
-    }
-    PopEnd(',');
+    SQL_ASSERT(PutWord(head));
     Append(')');
 
     Append(" VALUES ");
@@ -415,30 +464,219 @@ bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson
         {
             Append(", ");
         }
-        Append('(');
-        for (auto jt = it->Begin(); jt != it->End(); ++jt)
-        {
-            SQL_ASSERT(PutValue(*jt));
-            Append(',');
-        }
-        PopEnd(',');
-        Append(')');
+        SQL_ASSERT(PutValue(*it));
     }
 
     return true;
 }
 
-bool CSqlBuildBuffer::Insert(const rapidjson::Value& json)
+bool CSqlBuildBuffer::PushWhere(const rapidjson::Value& json)
 {
-    Append("INSERT INTO ");
-    return DoInsert(json);
+    if (!json)
+    {
+        return true;
+    }
+
+    Append(" WHERE 1=1");
+    return DoPushWhere(json);
 }
 
-bool CSqlBuildBuffer::Replace(const rapidjson::Value& json)
+bool CSqlBuildBuffer::PushHaving(const rapidjson::Value& json)
 {
-    Append("REPLACE INTO ");
-    return DoInsert(json);
+    if (!json)
+    {
+        return true;
+    }
+
+    Append(" HAVING 1=1");
+    return DoPushWhere(json);
 }
+
+bool CSqlBuildBuffer::DoPushWhere(const rapidjson::Value& json)
+{
+    for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
+    {
+        if (it->value.IsNull())
+        {
+            continue;
+        }
+
+        std::string field;
+        CSqlBuildBuffer another(field, m_pConfig);
+        SQL_ASSERT(another.PutWord(it->name));
+
+        if (it->value.IsArray())
+        {
+            Append( " AND ").Append(field).Append(" IN ");
+            SQL_ASSERT(PutValue(it->value));
+        }
+        else if (it->value.IsObject())
+        {
+            SQL_ASSERT(DoCmpWhere(it->value, field));
+        }
+        else
+        {
+            Append( " AND ").Append(field).Append('=');
+            SQL_ASSERT(PutValue(it->value));
+        }
+    }
+    return true;
+}
+
+/** Generate multiple comparision
+ * @code
+ * "field": {
+ *   "eq": ..., 
+ *   "ne": ...,
+ *   "gt": ...,
+ *   "lt": ...,
+ *   "ge": ...,
+ *   "le": ...,
+ *   "like": ...,
+ *   "null": true/false
+ * }
+ * @endcode
+ * */
+bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string& field)
+{
+    for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
+    {
+        if (it->value.IsNull())
+        {
+            continue;
+        }
+
+        const char* op = it->name.GetString();
+        if (0 == strcmp(op, "like"))
+        {
+            Append( " AND ").Append(field).Append(" like ");
+            Append(SINGLE_QUOTE);
+            if (m_pConfig->fix_like_value & SQL_LIKE_PREFIX)
+            {
+                Append('%');
+            }
+            SQL_ASSERT(PutEscape(it->value));
+            if (m_pConfig->fix_like_value & SQL_LIKE_POSTFIX)
+            {
+                Append('%');
+            }
+            Append(SINGLE_QUOTE);
+            continue;
+        }
+
+        if (0 == strcmp(op, "null"))
+        {
+            if (it->value.IsBool() && it->value.GetBool())
+            {
+                Append( " AND ").Append(field).Append(" is NULL");
+            }
+            else
+            {
+                Append( " AND ").Append(field).Append(" is NULL");
+            }
+            continue;
+        }
+
+        if (0 == strcmp(op, "eq"))
+        {
+            Append( " AND ").Append(field).Append('=');
+        }
+        else if (0 == strcmp(op, "gt"))
+        {
+            Append( " AND ").Append(field).Append('>');
+        }
+        else if (0 == strcmp(op, "lt"))
+        {
+            Append( " AND ").Append(field).Append(',');
+        }
+        else if (0 == strcmp(op, "ne"))
+        {
+            Append( " AND ").Append(field).Append("!=");
+        }
+        else if (0 == strcmp(op, "ge"))
+        {
+            Append( " AND ").Append(field).Append(">=");
+        }
+        else if (0 == strcmp(op, "le"))
+        {
+            Append( " AND ").Append(field).Append("<=");
+        }
+        else
+        {
+            continue;
+        }
+
+        PutValue(it->value);
+    }
+    return true;
+}
+
+bool CSqlBuildBuffer::PushOrder(const rapidjson::Value& json)
+{
+    if (!json)
+    {
+        return true;
+    }
+    Append(" ORDER BY ");
+    return PutWord(json);
+}
+
+bool CSqlBuildBuffer::PushGroup(const rapidjson::Value& json)
+{
+    if (!json)
+    {
+        return true;
+    }
+    Append(" GROUP BY ");
+    return PutWord(json);
+}
+
+/** limit clause.
+ * support data:
+ *   "limit": COUNT,
+ *   "limit": [OFFSET, COUNT],
+ *   "limit": {"offset": OFFSET, "count": COUNT}
+ * in which COUNT and OFFSET should be number to generate valid sql
+ * */
+bool CSqlBuildBuffer::PushLimit(const rapidjson::Value& json)
+{
+    if (!json)
+    {
+        return true;
+    }
+    Append(" LIMIT ");
+    if (json.IsUint() || json.IsUint64())
+    {
+        return PutValue(json);
+    }
+    else if (json.IsArray() && json.Size() == 2)
+    {
+        auto& offset = json[0];
+        auto& count = json[1];
+        if (offset.IsUint() || offset.IsUint64())
+        {
+            PutValue(offset);
+            Append(',');
+        }
+        return PutValue(count);
+    }
+    else if (json.IsObject())
+    {
+        auto& offset = json/"offset";
+        auto& count = json/"count";
+        if (offset.IsUint() || offset.IsUint64())
+        {
+            PutValue(offset);
+            Append(',');
+        }
+        return PutValue(count);
+    }
+    return false;
+}
+
+/* ------------------------------------------------------------ */
+// Section:
+
 
 bool CSqlBuildBuffer::DoInsert(const rapidjson::Value& json)
 {
@@ -449,7 +687,7 @@ bool CSqlBuildBuffer::DoInsert(const rapidjson::Value& json)
         return false;
     }
 
-    SQL_ASSERT(PutWord(table));
+    SQL_ASSERT(PushTable(table));
 
     auto& head = json/"head";
     if (!!head)
@@ -470,23 +708,53 @@ bool CSqlBuildBuffer::DoInsert(const rapidjson::Value& json)
     return true;
 }
 
+bool CSqlBuildBuffer::Update(const rapidjson::Value& json)
+{
+    auto& table = json/"table";
+    auto& value = json/"value";
+    if (!table || !value)
+    {
+        return false;
+    }
+
+    Append("UPDATE ");
+    SQL_ASSERT(PushTable(table));
+    SQL_ASSERT(PushSetValue(value));
+
+    size_t last = Size();
+    auto& where = json/"where";
+    SQL_ASSERT(PushWhere(where));
+    if (m_pConfig->refuse_update_without_where && Size() <= last + 10)
+    {
+        // only Append(" WHERE 1=1");
+        return false;
+    }
+
+    SQL_ASSERT(PushOrder(json/"order"));
+    SQL_ASSERT(PushLimit(json/"limit"));
+
+    return true;
+}
+
 /* ************************************************************ */
 // Section:
 
 bool CSqlBuilder::Insert(const rapidjson::Value& json, std::string& sql)
 {
-    CSqlBuildBuffer op(&m_config);
-    SQL_ASSERT(op.Insert(json));
-    sql = op.Buffer();
-    return true;
+    CSqlBuildBuffer obj(sql, &m_config);
+    return obj.Insert(json);
 }
 
 bool CSqlBuilder::Replace(const rapidjson::Value& json, std::string& sql)
 {
-    CSqlBuildBuffer op(&m_config);
-    SQL_ASSERT(op.Replace(json));
-    sql = op.Buffer();
-    return true;
+    CSqlBuildBuffer obj(sql, &m_config);
+    return obj.Replace(json);
+}
+
+bool CSqlBuilder::Update(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql, &m_config);
+    return obj.Update(json);
 }
 
 /* ************************************************************ */
@@ -494,18 +762,20 @@ bool CSqlBuilder::Replace(const rapidjson::Value& json, std::string& sql)
 
 bool sql_insert(const rapidjson::Value& json, std::string& sql)
 {
-    CSqlBuildBuffer op;
-    SQL_ASSERT(op.Insert(json));
-    sql = op.Buffer();
-    return true;
+    CSqlBuildBuffer obj(sql);
+    return obj.Insert(json);
 }
 
 bool sql_replace(const rapidjson::Value& json, std::string& sql)
 {
-    CSqlBuildBuffer op;
-    SQL_ASSERT(op.Replace(json));
-    sql = op.Buffer();
-    return true;
+    CSqlBuildBuffer obj(sql);
+    return obj.Replace(json);
+}
+
+bool sql_update(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql);
+    return obj.Update(json);
 }
 
 /* ************************************************************ */
@@ -1017,57 +1287,6 @@ std::string sql_limit(const rapidjson::Value& json)
 
 /* ************************************************************ */
 // public functions
-
-bool sql_update(const rapidjson::Value& json, std::string& sql)
-{
-    std::string table = sql_table(json/"table");
-    if (table.empty())
-    {
-        return false;
-    }
-
-    const rapidjson::Value& value = json / "value";
-    if (!value)
-    {
-        return false;
-    }
-
-    std::string set;
-    if (value.IsObject() && !value.ObjectEmpty())
-    {
-        set = sql_set(value);
-    }
-    if (set.empty())
-    {
-        return false;
-    }
-
-    std::string where = sql_where(json/"where");
-    if (where.empty() && s_config.refuse_update_without_where)
-    {
-        return false;
-    }
-
-    STRCAT(sql, "UPDATE ", table, " ", set);
-    if (!where.empty())
-    {
-        STRCAT(sql, " ", where);
-    }
-
-    std::string order = sql_order(json/"order");
-    if (!order.empty())
-    {
-        STRCAT(sql, " ", order);
-    }
-
-    std::string limit = sql_limit(json/"limit");
-    if (!limit.empty())
-    {
-        STRCAT(sql, " ", limit);
-    }
-
-    return true;
-}
 
 bool sql_select(const rapidjson::Value& json, std::string& sql)
 {
