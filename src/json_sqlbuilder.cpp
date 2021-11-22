@@ -529,6 +529,7 @@ bool CSqlBuildBuffer::DoPushWhere(const rapidjson::Value& json)
  * @code
  * "field": {
  *   "eq": ..., "ne": ..., "gt": ..., "lt": ..., "ge": ..., "le": ...,
+ *   "between": [min, max]
  *   "like": ...,
  *   "null": true/false
  * }
@@ -546,7 +547,7 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         const char* op = it->name.GetString();
         if (0 == strcmp(op, "like"))
         {
-            Append( " AND ").Append(field).Append(" like ");
+            Append(" AND ").Append(field).Append(" like ");
             Append(SINGLE_QUOTE);
             if (m_pConfig->fix_like_value & SQL_LIKE_PREFIX)
             {
@@ -561,42 +562,54 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
             continue;
         }
 
+        if (0 == strcmp(op, "between"))
+        {
+            if (it->value.IsArray() && it->value.Size() == 2)
+            {
+                Append(" AND ").Append(field).Append(" BETWEEN ");
+                SQL_ASSERT(PutValue(it->value[0]));
+                Append(" AND ");
+                SQL_ASSERT(PutValue(it->value[1]));
+            }
+            continue;
+        }
+
         if (0 == strcmp(op, "null"))
         {
             if (it->value.IsBool() && it->value.GetBool())
             {
-                Append( " AND ").Append(field).Append(" is NULL");
+                Append(" AND ").Append(field).Append(" is NULL");
             }
             else
             {
-                Append( " AND ").Append(field).Append(" is not NULL");
+                Append(" AND ").Append(field).Append(" is not NULL");
             }
             continue;
         }
 
         if (0 == strcmp(op, "eq"))
         {
-            Append( " AND ").Append(field).Append('=');
+            Append(" AND ").Append(field).Append('=');
         }
         else if (0 == strcmp(op, "gt"))
         {
-            Append( " AND ").Append(field).Append('>');
+            Append(" AND ").Append(field).Append('>');
         }
         else if (0 == strcmp(op, "lt"))
         {
-            Append( " AND ").Append(field).Append('<');
+            Append(" AND ").Append(field).Append('<');
         }
         else if (0 == strcmp(op, "ne"))
         {
-            Append( " AND ").Append(field).Append("!=");
+            Append(" AND ").Append(field).Append("!=");
         }
         else if (0 == strcmp(op, "ge"))
         {
-            Append( " AND ").Append(field).Append(">=");
+            Append(" AND ").Append(field).Append(">=");
         }
         else if (0 == strcmp(op, "le"))
         {
-            Append( " AND ").Append(field).Append("<=");
+            Append(" AND ").Append(field).Append("<=");
         }
         else
         {
@@ -719,9 +732,8 @@ bool CSqlBuildBuffer::Update(const rapidjson::Value& json)
 
     size_t last = Size();
     SQL_ASSERT(PushWhere(json/"where"));
-    if (m_pConfig->refuse_update_without_where && Size() <= last + 10)
+    if (m_pConfig->refuse_update_without_where && Size() < last + sizeof(" WHERE 1=1"))
     {
-        // only Append(" WHERE 1=1");
         return false;
     }
 
@@ -785,9 +797,8 @@ bool CSqlBuildBuffer::Delete(const rapidjson::Value& json)
 
     size_t last = Size();
     SQL_ASSERT(PushWhere(json/"where"));
-    if (m_pConfig->refuse_delete_without_where && Size() <= last + 10)
+    if (m_pConfig->refuse_delete_without_where && Size() <= last + sizeof(" WHERE 1=1"))
     {
-        // only Append(" WHERE 1=1");
         return false;
     }
 

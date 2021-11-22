@@ -301,7 +301,6 @@ std::string jsonText = R"json({
     }
 }
 
-
 DEF_TAST(sql_delete, "build delete sql")
 {
     DESC("DELET without where will fail");
@@ -820,4 +819,102 @@ std::string jsonText = R"json({
 
     // restore the config
     set_sql_config(&cfg);
+}
+
+DEF_TAST(sql_cbuilder, "tast use CSqlBuilder")
+{
+    DESC("create a CSqulBuilder object");
+    jsonkit::CSqlBuilder sb;
+
+    {
+    std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "f1": { "le":99, "ge":10 },
+        "f2": { "between": [10,99] }
+    }
+})json";
+
+    COUT(jsonText);
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    std::string sql;
+    std::string sqlExpect = "SELECT COUNT(1) FROM t_name WHERE 1=1 AND f1<=99 AND f1>=10 AND f2 BETWEEN 10 AND 99";
+    COUT(sb.Count(doc, sql), true);
+    COUT(sql, sqlExpect);
+    }
+
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "value": {
+        "f_1": "val-1",
+        "f_2": "val-2",
+        "f_3": 333
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "REPLACE INTO t_name SET f_1='val-1',f_2='val-2',f_3=333";
+        COUT(sb.Replace(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
+    DESC("change config in CSqulBuilder object");
+    sb.Config().fix_like_value |= jsonkit::SQL_LIKE_PREFIX;
+    {
+std::string jsonText = R"json({
+    "table": "t_name",
+    "where": {
+        "name": {
+           "like": "abc"
+        }
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND name like '%abc%'";
+        COUT(sb.Select(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+}
+
+DEF_TAST(sql_append, "tast generate more sql to a string buffer")
+{
+    jsonkit::CSqlBuilder sb;
+
+    std::string jsonText = R"json({
+    "table": "t_name",
+    "field": "f1,f2,f3",
+    "where": {
+        "id": 1001
+    }
+})json";
+
+    COUT(jsonText);
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    std::string sql;
+    std::string sqlExpect = "SELECT COUNT(1) FROM t_name WHERE 1=1 AND id=1001";
+    COUT(sb.Count(doc, sql), true);
+    COUT(sql, sqlExpect);
+
+    sql.append(";");
+    sqlExpect = "SELECT COUNT(1) FROM t_name WHERE 1=1 AND id=1001;SELECT f1,f2,f3 FROM t_name WHERE 1=1 AND id=1001";
+    COUT(sb.Select(doc, sql), true);
+    COUT(sql, sqlExpect);
 }
