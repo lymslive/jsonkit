@@ -318,7 +318,8 @@ std::string jsonText = R"json({
         std::string sql;
         std::string sqlExpect = "DELETE FROM t_name";
         COUT(jsonkit::sql_delete(doc, sql), false);
-        COUT(sql.empty(), true);
+        COUT(sql, sqlExpect);
+        // COUT(sql.empty(), true);
     }
 
     DESC("DELET without where will fail");
@@ -336,10 +337,10 @@ std::string jsonText = R"json({
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "DELETE FROM t_name";
+        std::string sqlExpect = "DELETE FROM t_name WHERE 1=1";
         COUT(jsonkit::sql_delete(doc, sql), false);
-        COUT(sql);
-        COUT(sql.empty(), true);
+        COUT(sql, sqlExpect);
+        // COUT(sql.empty(), true);
     }
 
     DESC("DELETE ... WHERE ...");
@@ -368,6 +369,7 @@ std::string jsonText = R"json({
 
 DEF_TAST(sql_injection, "detect sql injection")
 {
+    DESC("sql generation may stop in midway when found invalid input");
     DESC("invalid table name");
     {
         std::string jsonText = R"json({
@@ -380,8 +382,10 @@ DEF_TAST(sql_injection, "detect sql injection")
         COUT(doc.HasParseError(), false);
 
         std::string sql;
+        std::string sqlExpect = "SELECT COUNT(1) FROM it";
         COUT(jsonkit::sql_count(doc, sql), false);
-        COUT(sql.empty(), true);
+        COUT(sql, sqlExpect);
+        // COUT(sql.empty(), true);
     }
 
     DESC("invalid insert field name");
@@ -401,8 +405,10 @@ DEF_TAST(sql_injection, "detect sql injection")
         COUT(doc.HasParseError(), false);
 
         std::string sql;
+        std::string sqlExpect = "INSERT INTO t_name SET f_1";
         COUT(jsonkit::sql_insert(doc, sql), false);
-        COUT(sql.empty(), true);
+        COUT(sql, sqlExpect);
+        // COUT(sql.empty(), true);
     }
 
     DESC("escape set value");
@@ -441,7 +447,9 @@ DEF_TAST(sql_injection, "detect sql injection")
 
         std::string sql;
         COUT(jsonkit::sql_select(doc, sql), false);
-        COUT(sql.empty(), true);
+        std::string sqlExpect = "SELECT f_want1";
+        COUT(sql, sqlExpect);
+        // COUT(sql.empty(), true);
     }
 
     DESC("escape where value");
@@ -480,8 +488,8 @@ DEF_TAST(sql_injection, "detect sql injection")
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "SELECT f_want1,f_want2 FROM t_name";
-        COUT(jsonkit::sql_select(doc, sql), true);
+        std::string sqlExpect = "SELECT f_want1,f_want2 FROM t_name WHERE 1=1";
+        COUT(jsonkit::sql_select(doc, sql), false);
         COUT(sql, sqlExpect);
     }
 
@@ -501,8 +509,8 @@ DEF_TAST(sql_injection, "detect sql injection")
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND id='xxx'";
-        COUT(jsonkit::sql_select(doc, sql), true);
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND id='xxx' LIMIT ";
+        COUT(jsonkit::sql_select(doc, sql), false);
         COUT(sql, sqlExpect);
     }
 }

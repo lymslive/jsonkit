@@ -156,6 +156,9 @@ public: // user interface for typical sql statements
     }
 
     bool Update(const rapidjson::Value& json);
+    bool Select(const rapidjson::Value& json);
+    bool Count(const rapidjson::Value& json);
+    bool Delete(const rapidjson::Value& json);
 
 protected:
     sql_config_t* m_pConfig;
@@ -323,6 +326,11 @@ bool CSqlBuildBuffer::PushTable(const rapidjson::Value& json)
 
 bool CSqlBuildBuffer::PushField(const rapidjson::Value& json)
 {
+    if (!json)
+    {
+        Append('*');
+        return true;
+    }
     if (json.IsString())
     {
         return PutWord(json.GetString(), json.GetStringLength());
@@ -572,7 +580,7 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
             }
             else
             {
-                Append( " AND ").Append(field).Append(" is NULL");
+                Append( " AND ").Append(field).Append(" is not NULL");
             }
             continue;
         }
@@ -587,7 +595,7 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         }
         else if (0 == strcmp(op, "lt"))
         {
-            Append( " AND ").Append(field).Append(',');
+            Append( " AND ").Append(field).Append('<');
         }
         else if (0 == strcmp(op, "ne"))
         {
@@ -677,7 +685,6 @@ bool CSqlBuildBuffer::PushLimit(const rapidjson::Value& json)
 /* ------------------------------------------------------------ */
 // Section:
 
-
 bool CSqlBuildBuffer::DoInsert(const rapidjson::Value& json)
 {
     auto& table = json/"table";
@@ -722,8 +729,7 @@ bool CSqlBuildBuffer::Update(const rapidjson::Value& json)
     SQL_ASSERT(PushSetValue(value));
 
     size_t last = Size();
-    auto& where = json/"where";
-    SQL_ASSERT(PushWhere(where));
+    SQL_ASSERT(PushWhere(json/"where"));
     if (m_pConfig->refuse_update_without_where && Size() <= last + 10)
     {
         // only Append(" WHERE 1=1");
@@ -732,12 +738,77 @@ bool CSqlBuildBuffer::Update(const rapidjson::Value& json)
 
     SQL_ASSERT(PushOrder(json/"order"));
     SQL_ASSERT(PushLimit(json/"limit"));
+    return true;
+}
+
+bool CSqlBuildBuffer::Select(const rapidjson::Value& json)
+{
+    auto& table = json/"table";
+    if (!table)
+    {
+        return false;
+    }
+
+    Append("SELECT ");
+    SQL_ASSERT(PushField(json/"field"));
+    Append(" FROM ");
+    SQL_ASSERT(PushTable(table));
+
+    SQL_ASSERT(PushWhere(json/"where"));
+
+    auto& group = json/"group";
+    if (!!group)
+    {
+        SQL_ASSERT(PushGroup(group));
+        SQL_ASSERT(PushHaving(json/"having"));
+    }
+
+    SQL_ASSERT(PushOrder(json/"order"));
+    SQL_ASSERT(PushLimit(json/"limit"));
+    return true;
+}
+
+bool CSqlBuildBuffer::Count(const rapidjson::Value& json)
+{
+    auto& table = json/"table";
+    if (!table)
+    {
+        return false;
+    }
+
+    Append("SELECT COUNT(1) FROM ");
+    SQL_ASSERT(PushTable(table));
+    SQL_ASSERT(PushWhere(json/"where"));
 
     return true;
 }
 
+bool CSqlBuildBuffer::Delete(const rapidjson::Value& json)
+{
+    auto& table = json/"table";
+    if (!table)
+    {
+        return false;
+    }
+
+    Append("DELETE FROM ");
+    SQL_ASSERT(PushTable(table));
+
+    size_t last = Size();
+    SQL_ASSERT(PushWhere(json/"where"));
+    if (m_pConfig->refuse_delete_without_where && Size() <= last + 10)
+    {
+        // only Append(" WHERE 1=1");
+        return false;
+    }
+
+    SQL_ASSERT(PushOrder(json/"order"));
+    SQL_ASSERT(PushLimit(json/"limit"));
+    return true;
+}
+
 /* ************************************************************ */
-// Section:
+// Section: public class interface
 
 bool CSqlBuilder::Insert(const rapidjson::Value& json, std::string& sql)
 {
@@ -757,8 +828,26 @@ bool CSqlBuilder::Update(const rapidjson::Value& json, std::string& sql)
     return obj.Update(json);
 }
 
+bool CSqlBuilder::Select(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql, &m_config);
+    return obj.Select(json);
+}
+
+bool CSqlBuilder::Count(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql, &m_config);
+    return obj.Count(json);
+}
+
+bool CSqlBuilder::Delete(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql, &m_config);
+    return obj.Delete(json);
+}
+
 /* ************************************************************ */
-// Section:
+// Section: public function interface
 
 bool sql_insert(const rapidjson::Value& json, std::string& sql)
 {
@@ -776,6 +865,24 @@ bool sql_update(const rapidjson::Value& json, std::string& sql)
 {
     CSqlBuildBuffer obj(sql);
     return obj.Update(json);
+}
+
+bool sql_select(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql);
+    return obj.Select(json);
+}
+
+bool sql_count(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql);
+    return obj.Count(json);
+}
+
+bool sql_delete(const rapidjson::Value& json, std::string& sql)
+{
+    CSqlBuildBuffer obj(sql);
+    return obj.Delete(json);
 }
 
 /* ************************************************************ */
@@ -1286,109 +1393,5 @@ std::string sql_limit(const rapidjson::Value& json)
 }
 
 /* ************************************************************ */
-// public functions
-
-bool sql_select(const rapidjson::Value& json, std::string& sql)
-{
-    std::string table = sql_table(json/"table");
-    if (table.empty())
-    {
-        return false;
-    }
-
-    std::string field = sql_field(json/"field");
-    if (field.empty())
-    {
-        return false;
-    }
-
-
-    STRCAT(sql, "SELECT ", field, " FROM ", table);
-
-    std::string where = sql_where(json/"where");
-    if (!where.empty())
-    {
-        STRCAT(sql, " ", where);
-    }
-
-    std::string group = sql_group(json/"group");
-    if (!group.empty())
-    {
-        STRCAT(sql, " ", group);
-        std::string having = sql_where(json/"having", "HAVING");
-        if (!having.empty())
-        {
-            STRCAT(sql, " ", having);
-        }
-    }
-
-    std::string order = sql_order(json/"order");
-    if (!order.empty())
-    {
-        STRCAT(sql, " ", order);
-    }
-
-    std::string limit = sql_limit(json/"limit");
-    if (!limit.empty())
-    {
-        STRCAT(sql, " ", limit);
-    }
-
-    return true;
-}
-
-bool sql_count(const rapidjson::Value& json, std::string& sql)
-{
-    std::string table = sql_table(json/"table");
-    if (table.empty())
-    {
-        return false;
-    }
-
-    STRCAT(sql, "SELECT COUNT(1) FROM ", table);
-    std::string where = sql_where(json/"where");
-    if (!where.empty())
-    {
-        STRCAT(sql, " ", where);
-    }
-
-    return true;
-}
-
-bool sql_delete(const rapidjson::Value& json, std::string& sql)
-{
-    std::string table = sql_table(json/"table");
-    if (table.empty())
-    {
-        return false;
-    }
-
-    std::string where = sql_where(json/"where");
-    if (where.empty() && s_config.refuse_delete_without_where)
-    {
-        // delete must have where
-        return false;
-    }
-
-    STRCAT(sql, "DELETE FROM ", table);
-    if (!where.empty())
-    {
-        STRCAT(sql, " ", where);
-    }
-
-    std::string order = sql_order(json/"order");
-    if (!order.empty())
-    {
-        STRCAT(sql, " ", order);
-    }
-
-    std::string limit = sql_limit(json/"limit");
-    if (!limit.empty())
-    {
-        STRCAT(sql, " ", limit);
-    }
-
-    return true;
-}
 
 } /* jsonkit */ 
