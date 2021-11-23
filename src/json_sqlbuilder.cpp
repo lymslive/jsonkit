@@ -1,7 +1,5 @@
 #include "json_sqlbuilder.h"
 #include "json_operator.h"
-#include "jsonkit_rpdjn.h"
-
 #include "jsonkit_internal.h"
 
 #define SQL_ASSERT(expr) do { \
