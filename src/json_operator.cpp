@@ -156,20 +156,27 @@ bool scalar_value(uint64_t& dest, const rapidjson::Value& json)
 
 /**************************************************************/
 
+inline
 const rapidjson::Value& error_value()
 {
     static rapidjson::Value json;
-    if (!json.IsNull())
-    {
-        LOGF("Warnning: null value may modified accidently!! reset to null");
-        json.SetNull();
-    }
     return json;
 }
 
 bool is_error_value(const rapidjson::Value& json)
 {
     return &json == &(error_value());
+}
+
+const rapidjson::Value& get_error_value()
+{
+    const rapidjson::Value& json = error_value();
+    if (!json.IsNull())
+    {
+        LOGF("Warnning: null value may modified accidently!! reset to null");
+        const_cast<rapidjson::Value&>(json).SetNull();
+    }
+    return json;
 }
 
 const rapidjson::Value* do_operate_path(const rapidjson::Value& json, const char* path)
@@ -240,7 +247,7 @@ const rapidjson::Value& operate_path(const rapidjson::Value& json, const char* p
     }
     else
     {
-        return error_value();
+        return get_error_value();
     }
 }
 
@@ -250,7 +257,7 @@ const rapidjson::Value& operate_path(const rapidjson::Value& json, size_t index)
     {
         return json[index];
     }
-    return error_value();
+    return get_error_value();
 }
 
 /**************************************************************/

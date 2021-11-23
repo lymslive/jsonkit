@@ -119,7 +119,7 @@ std::string operate_pipe(const rapidjson::Value& json, const char* defVal)
 class COperand
 {
 public:
-    /** constructor from json value and optional alloctor */
+    /** constructor from json value and optional allocator */
     COperand(rapidjson::Document& doc)
         : m_pJsonNode(&doc), m_pAllocator(&(doc.GetAllocator()))
     {}
@@ -273,6 +273,12 @@ public:
     template <typename valueT>
     COperand Append(const std::pair<std::string, valueT>& item) const
     {
+        return AddMember(item.first, item.second);
+    }
+
+    template <typename valueT>
+    COperand AddMember(const std::string& key, valueT& value) const
+    {
         if (!m_pJsonNode || !m_pAllocator)
         {
             return *this;
@@ -287,11 +293,11 @@ public:
             return *this;
         }
 
-        rapidjson::Value key;
-        key.SetString(item.first.c_str(), item.first.size(), *m_pAllocator);
-        rapidjson::Value val;
-        COperand(val, *m_pAllocator).Assign(item.second);
-        m_pJsonNode->AddMember(key, val, *m_pAllocator);
+        rapidjson::Value keyNode;
+        keyNode.SetString(key.c_str(), key.size(), *m_pAllocator);
+        rapidjson::Value valNode;
+        COperand(valNode, *m_pAllocator).Assign(value);
+        m_pJsonNode->AddMember(keyNode, valNode, *m_pAllocator);
 
         return *this;
     }
@@ -383,6 +389,18 @@ inline
 jsonkit::COperand operator* (const jsonkit::COperand& jsop, const rapidjson::Value& val)
 {
     return jsop.OperateStar(val);
+}
+
+inline
+jsonkit::COperand operator* (const rapidjson::Value& val, rapidjson::Document::AllocatorType& allocator)
+{
+    return jsonkit::COperand(val, allocator);
+}
+
+inline
+jsonkit::COperand operator* (rapidjson::Document::AllocatorType& allocator, const rapidjson::Value& val)
+{
+    return jsonkit::COperand(val, allocator);
 }
 
 template <typename valueT>
