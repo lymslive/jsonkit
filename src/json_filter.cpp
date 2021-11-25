@@ -9,6 +9,8 @@
 #include <regex>
 
 #include "json_filter.h"
+#include "json_output.h"
+#include "json_input.h"
 
 namespace jsonkit
 {
@@ -160,6 +162,86 @@ int filter_key(rapidjson::Value& json, const std::string& pattern, bool keep/* =
                 bool match = std::regex_search(key, exp);
                 return keep_bool(keep, match);
             });
+}
+
+/* ************************************************************ */
+// Section: map
+
+void map_replace(rapidjson::Value& json, rapidjson::Document::AllocatorType& allocator, json_map_fn fn)
+{
+    if (json.IsObject())
+    {
+        for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
+        {
+            if (it->value.IsObject() || it->value.IsArray())
+            {
+                map_replace(it->value, allocator, fn);
+            }
+            else
+            {
+                fn(it->name, it->value, allocator);
+            }
+        }
+    }
+    else if (json.IsArray())
+    {
+        rapidjson::Value nullName;
+        for (auto it = json.Begin(); it != json.End(); ++it)
+        {
+            if (it->IsObject() || it->IsArray())
+            {
+                map_replace(*it, allocator, fn);
+            }
+            else
+            {
+                fn(nullName, *it, allocator);
+            }
+        }
+    }
+    else
+    {
+        rapidjson::Value nullName;
+        fn(nullName, json, allocator);
+    }
+}
+
+void map_to_string(rapidjson::Value& json, rapidjson::Document::AllocatorType& allocator)
+{
+    map_replace(json, allocator,
+            [](rapidjson::Value& name, rapidjson::Value& value, rapidjson::Document::AllocatorType& allocator)
+            {
+                if (!value.IsString())
+                {
+                    std::string str = stringfy(value);
+                    value.SetString(str.c_str(), str.size(), allocator);
+                }
+            }
+        );
+}
+
+void map_fn_decode_json(rapidjson::Value& name, rapidjson::Value& value, rapidjson::Document::AllocatorType& allocator)
+{
+    if (!value.IsString() || value.GetStringLength() < 2)
+    {
+        return;
+    }
+    const char* str = value.GetString();
+    const char b = str[0];
+    const char e = str[value.GetStringLength()-1];
+
+    if ((b == '{' && e == '}') || (b == '[' && e == ']'))
+    {
+        rapidjson::Document doc(&allocator);
+        if (read_string(doc, value.GetString(), value.GetStringLength()))
+        {
+            value = doc.Move();
+        }
+    }
+}
+
+void map_decode_json(rapidjson::Value& json, rapidjson::Document::AllocatorType& allocator)
+{
+    map_replace(json, allocator, map_fn_decode_json);
 }
 
 } /* jsonkit */ 

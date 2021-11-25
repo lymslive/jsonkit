@@ -82,6 +82,33 @@ int filter_key_sorted(rapidjson::Value& json, const std::vector<std::string>& ke
 /** filter json object with regexp pattern for keys */
 int filter_key(rapidjson::Value& json, const std::string& pattern, bool keep = true);
 
-} /* jsonkit */ 
+/* ************************************************************ */
+// Section: map
 
+/** function type to modify in place each node in a json tree. 
+ * @param name,  the member name, usually is json string when the parent json
+ * node is object. Also can be null, if the parent is array.
+ * @param value, the value
+ * */
+typedef std::function<void(rapidjson::Value& name, rapidjson::Value& value, rapidjson::Document::AllocatorType& allocator)> json_map_fn;
+
+/** map a json dom with provided map function
+ * @param json, a json dom, nomally object,
+ * @param fn, a map function
+ * @details This function process each leaf node recursively, but not remove
+ * any one.
+ * */
+void map_replace(rapidjson::Value& json, rapidjson::Document::AllocatorType& allocator, json_map_fn fn);
+
+/** map each leaf node to string type
+ * @details Change number/bool/null to string representation. */
+void map_to_string(rapidjson::Value& json, rapidjson::Document::AllocatorType& allocator);
+
+/** replace encoded json string to nested json value.
+ * @details Only decode object {} or array [], and if not valid json string,
+ * do not modify the original string value.
+ * */
+void map_decode_json(rapidjson::Value& json, rapidjson::Document::AllocatorType& allocator);
+
+} /* jsonkit */ 
 #endif /* end of include guard: JSON_FILTER_H__ */
