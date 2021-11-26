@@ -16,25 +16,25 @@
 namespace jsonkit
 {
 
-bool write_stream(const rapidjson::Value& doc, std::ostream& stream, bool pretty)
+bool write_stream(const rapidjson::Value& json, std::ostream& stream, bool pretty)
 {
     rapidjson::OStreamWrapper os(stream);
 
     if (pretty)
     {
         rapidjson::PrettyWriter<rapidjson::OStreamWrapper> writer(os);
-        doc.Accept(writer);
+        json.Accept(writer);
     }
     else
     {
         rapidjson::Writer<rapidjson::OStreamWrapper> writer(os);
-        doc.Accept(writer);
+        json.Accept(writer);
     }
 
     return true;
 }
 
-bool write_file(const rapidjson::Value& doc, const std::string& file, bool pretty)
+bool write_file(const rapidjson::Value& json, const std::string& file, bool pretty)
 {
     std::ofstream ofs(file.c_str());
     if (!ofs.is_open())
@@ -42,7 +42,7 @@ bool write_file(const rapidjson::Value& doc, const std::string& file, bool prett
         return false;
     }
 
-    bool bRet = write_stream(doc, ofs, pretty);
+    bool bRet = write_stream(json, ofs, pretty);
     ofs.close();
     return bRet;
 }

@@ -12,8 +12,8 @@
 namespace jsonkit
 {
     
-bool write_stream(const rapidjson::Value& doc, std::ostream& stream, bool pretty = false);
-bool write_file(const rapidjson::Value& doc, const std::string& file, bool pretty = false);
+bool write_stream(const rapidjson::Value& json, std::ostream& stream, bool pretty = false);
+bool write_file(const rapidjson::Value& json, const std::string& file, bool pretty = false);
 
 /// print json in pretty or condensed one-line format
 bool prettify(const rapidjson::Value& inJson, std::string& outJson);

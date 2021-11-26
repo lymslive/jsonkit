@@ -183,13 +183,31 @@ public:
         return OperatePipeto(val);
     }
 
+    COperand& Assign(rapidjson::Value& val)
+    {
+        if (m_pJsonNode)
+        {
+            (*m_pJsonNode) = val;
+        }
+        return *this;
+    }
+
+    COperand& Assign(const rapidjson::Value& val)
+    {
+        if (m_pJsonNode)
+        {
+            m_pJsonNode->CopyFrom(val, *m_pAllocator);
+        }
+        return *this;
+    }
+
     /** can directly assign numeric value to rapidjson::Value.
      * example:
      * COperand& Assign(int iVal);
      * COperand& Assign(double dVal);
      * */
     template <typename valueT> 
-    COperand& Assign(valueT val)
+    COperand& Assign(valueT& val)
     {
         if (m_pJsonNode)
         {
@@ -246,20 +264,30 @@ public:
         return Assign(val);
     }
 
-    template <typename valueT>
-    COperand Append(const valueT& item) const
+    //template <typename valueT>
+    COperand& operator=(rapidjson::Value& val)
+    {
+        return Assign(val);
+    }
+
+    bool ActArray() const
     {
         if (!m_pJsonNode || !m_pAllocator)
         {
-            return *this;
+            return false;
         }
         if (m_pJsonNode->IsNull())
         {
             m_pJsonNode->SetArray();
         }
-        if (false == m_pJsonNode->IsArray())
+        return m_pJsonNode->IsArray();
+    }
+
+    template <typename valueT>
+    COperand Append(valueT& item) const
+    {
+        if (!ActArray())
         {
-            LOGF("can only append value to json array");
             return *this;
         }
 
@@ -372,6 +400,13 @@ const rapidjson::Value& operator>> (const rapidjson::Value& json, std::string& d
     return json;
 }
 
+inline
+std::ostream& operator<< (std::ostream& os, const rapidjson::Value& json)
+{
+    jsonkit::write_stream(json, os);
+    return os;
+}
+
 /**************************************************************/
 
 /** JSOP operator for COperand, in globle namespace.
@@ -435,13 +470,9 @@ jsonkit::COperand operator<< (const jsonkit::COperand& json, const valueT& val)
 }
 
 inline
-jsonkit::COperand& operator>> (jsonkit::COperand& json, std::string& dest)
+jsonkit::COperand operator<< (const jsonkit::COperand& json, rapidjson::Value& val)
 {
-    if (json)
-    {
-        jsonkit::stringfy(*json, dest);
-    }
-    return json;
+    return json.Append(val);
 }
 
 #endif /* end of include guard: JSON_OPERATOR_H__ */

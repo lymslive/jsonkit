@@ -253,3 +253,67 @@ DEF_TAST(operator_scalar, "handle scalar auto conversion")
     COUT(str);
     COUT(str == psz, true);
 }
+
+DEF_TAST(operator_append, "tast jsop <<")
+{
+    rapidjson::Document doc;
+    
+    DESC("doc init from default null, then << different type of value");
+    COUT(doc.IsNull(), true);
+    doc << 1 << "abc" << std::string("ABC") << 1.1 << -2;
+    {
+        rapidjson::Value item(3.14);
+        doc << item;
+        DESC("json value << has move effect");
+        COUT(jsonkit::stringfy(item));
+        COUT(item.IsNull(), true);
+
+        item.SetObject();
+        item.AddMember("abc", 1, doc.GetAllocator());
+        item.AddMember("ABC", 1.1, doc.GetAllocator());
+
+        doc << item;
+        COUT(jsonkit::stringfy(item));
+        COUT(item.IsNull(), true);
+
+        DESC("while const json value& << has copy effect");
+        item = 314;
+        doc << const_cast<const rapidjson::Value&>(item);
+        COUT(item.IsNull(), false);
+        COUT(item.GetInt(), 314);
+    }
+    // COUT(jsonkit::stringfy(doc));
+    COUT(doc);
+
+    COUT(doc.IsArray(), true);
+    COUT(doc.Size(), 8);
+    COUT(doc[0].IsInt(), true);
+    COUT(doc[6].IsObject(), true);
+
+    DESC("append operator << internally call assign = operator");
+    doc/0 = 2;
+    COUT(doc[0].GetInt(), 2);
+    doc/0 = 3.14;
+    COUT(doc[0].GetDouble(), 3.14);
+    doc/0 = "3.14";
+    COUT(doc[0].IsString(), true);
+    COUT(doc[0].GetString(), std::string("3.14"));
+    doc/0 = false;
+    COUT(doc[0].IsBool(), true);
+    COUT(doc[0].GetBool(), false);
+
+    DESC("json value assign has move effect");
+    rapidjson::Value item(188);
+    doc/0 = item;
+    COUT(doc[0].GetInt(), 188);
+    COUT(item.IsNull(), true);
+
+    DESC("but const json value& assign is copy effect");
+    item = 188;
+    JSOP(doc)/0 = const_cast<const rapidjson::Value&>(item);
+    COUT(doc[0].GetInt(), 188);
+    COUT(item.IsNull(), false);
+    COUT(item.GetInt(), 188);
+
+    COUT(doc);
+}
