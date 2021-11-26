@@ -75,6 +75,33 @@ DEF_TAST(sql_insert, "build insert sql")
         COUT(jsonkit::sql_insert(doc, sql), true);
         COUT(sql, sqlExpect);
     }
+
+    DESC("INSERT ... ON DUPLICATE KEY UPDATE ...");
+    {
+        std::string jsonText = R"json({
+    "table": "t_name",
+    "value": {
+        "f_1": "val-1",
+        "f_2": "val-2",
+        "id": 333
+    },
+    "update": {
+        "f_1": "val-1",
+        "f_2": "val-2"
+    }
+})json";
+
+        COUT(jsonText);
+        rapidjson::Document doc;
+        doc.Parse(jsonText.c_str(), jsonText.size());
+        COUT(doc.HasParseError(), false);
+
+        std::string sql;
+        std::string sqlExpect = "INSERT INTO t_name SET f_1='val-1',f_2='val-2',id=333 ON DUPLICATE KEY UPDATE f_1='val-1',f_2='val-2'";
+        COUT(jsonkit::sql_insert(doc, sql), true);
+        COUT(sql, sqlExpect);
+    }
+
 }
 
 DEF_TAST(sql_update, "build update sql")

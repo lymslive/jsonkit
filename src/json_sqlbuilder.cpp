@@ -326,6 +326,7 @@ bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json)
 {
     if (json.IsObject() && json.MemberCount() > 0)
     {
+        Append(" SET ");
         return DoSetValue(json);
     }
     else if (json.IsArray() && json.Size() > 0)
@@ -338,7 +339,6 @@ bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json)
 /** Generate: SET field1=value1, field2=value2, ... */
 bool CSqlBuildBuffer::DoSetValue(const rapidjson::Value& json)
 {
-    Append(" SET ");
     for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
     {
         // skip json null, if really mean to set null use string "`null`"
@@ -704,6 +704,13 @@ bool CSqlBuildBuffer::DoInsert(const rapidjson::Value& json)
     else
     {
         SQL_ASSERT(PushSetValue(value));
+    }
+
+    auto& update = json/"update";
+    if (!!update && update.IsObject())
+    {
+        Append(" ON DUPLICATE KEY UPDATE ");
+        SQL_ASSERT(DoSetValue(update));
     }
 
     // need to select last auto increment id after insert
