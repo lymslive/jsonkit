@@ -187,8 +187,6 @@ std::string jsonText = R"json({
     COUT(!ggg, true);
     COUT(eee.IsNull(), false);
     COUT(ggg.IsNull(), true);
-    COUT(jsonkit::is_error_value(eee), false);
-    COUT(jsonkit::is_error_value(ggg), true);
 
     DESC("wrong to modify the error value");
     ggg = 100;
@@ -199,7 +197,6 @@ std::string jsonText = R"json({
     COUT(&ggg == &hhh, true);
     COUT(hhh | 0, 0);
     COUT(hhh.IsNull(), true);
-    COUT(jsonkit::is_error_value(hhh), true);
     COUT(!hhh, true);
 
     COUT(ggg | 0, 0);

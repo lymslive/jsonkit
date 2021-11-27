@@ -156,16 +156,13 @@ bool scalar_value(uint64_t& dest, const rapidjson::Value& json)
 
 /**************************************************************/
 
+rapidjson::Value CPathError::value;
+
 inline
 const rapidjson::Value& error_value()
 {
-    static rapidjson::Value json;
-    return json;
-}
-
-bool is_error_value(const rapidjson::Value& json)
-{
-    return &json == &(error_value());
+    // static rapidjson::Value json;
+    return CPathError::value;
 }
 
 const rapidjson::Value& get_error_value()
@@ -173,7 +170,7 @@ const rapidjson::Value& get_error_value()
     const rapidjson::Value& json = error_value();
     if (!json.IsNull())
     {
-        LOGF("Warnning: null value may modified accidently!! reset to null");
+        LOGF("Warnning: incorrect use of path error value, best check with operator!");
         const_cast<rapidjson::Value&>(json).SetNull();
     }
     return json;

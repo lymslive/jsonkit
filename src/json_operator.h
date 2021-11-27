@@ -76,13 +76,6 @@ const rapidjson::Value& operate_path(const rapidjson::Value& json, int index)
     return operate_path(json, (size_t)index);
 }
 
-/** determin if a json value is return by path operator on error
- * @details path operator for raw json must also return reference to a json value
- * to chained operation, when error occurs, return a static null json value.
- * also used in operator !json.
- * */
-bool is_error_value(const rapidjson::Value& json);
-
 /** perform operator |= to extrace value from json node */
 
 template <typename valueT>
@@ -100,13 +93,14 @@ valueT operate_pipe(const rapidjson::Value& json, const valueT& defVal)
     return operate_pipeto(val, json);
 }
 
-/*
-inline
-std::string operate_pipe(const rapidjson::Value& json, const char* defVal)
+/** object to mark a path error, for operator!
+ * @details path operator for raw json must also return reference to a json value
+ * to chained operation, when error occurs, return a static null json value.
+ * */
+struct CPathError
 {
-    return operate_pipe(json, std::string(defVal));
-}
-*/
+    static rapidjson::Value value;
+};
 
 /**************************************************************/
 
@@ -390,7 +384,7 @@ valueT operator| (const valueT& defVal, const rapidjson::Value& json)
 inline
 bool operator! (const rapidjson::Value& json)
 {
-    return json.IsNull() || jsonkit::is_error_value(json);
+    return &json == &jsonkit::CPathError::value;
 }
 
 inline
