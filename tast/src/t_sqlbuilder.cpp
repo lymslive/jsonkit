@@ -945,3 +945,30 @@ DEF_TAST(sql_append, "tast generate more sql to a string buffer")
     COUT(sb.Select(doc, sql), true);
     COUT(sql, sqlExpect);
 }
+
+DEF_TAST(sql_compare, "tast complex compare in where")
+{
+    std::string jsonText = R"json({
+    "table": "t_name",
+    "field": "f1,f2,f3",
+    "where": {
+        "id": 1001,
+        "f1": { "ne": 0, "not in": [3,5,7]},
+        "f2": { "null": false},
+        "f3": { "like": "xx"},
+        "f4": { "between": ["aa","zz"]},
+        "f5": { "gt": 100, "lt": 200},
+        "f6": { "ge": "AA", "le": "ZZ"}
+    }
+})json";
+
+    COUT(jsonText);
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    std::string sql;
+    std::string sqlExpect = "SELECT f1,f2,f3 FROM t_name WHERE 1=1 AND id=1001 AND f1!=0 AND f1 not IN (3,5,7) AND f2 is not NULL AND f3 like 'xx%' AND f4 BETWEEN 'aa' AND 'zz' AND f5>100 AND f5<200 AND f6>='AA' AND f6<='ZZ'";
+    COUT(jsonkit::sql_select(doc, sql), true);
+    COUT(sql, sqlExpect);
+}

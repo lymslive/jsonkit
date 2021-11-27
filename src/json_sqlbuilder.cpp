@@ -528,7 +528,7 @@ bool CSqlBuildBuffer::DoPushWhere(const rapidjson::Value& json)
  * "field": {
  *   "eq": ..., "ne": ..., "gt": ..., "lt": ..., "ge": ..., "le": ...,
  *   "between": [min, max]
- *   "like": ...,
+ *   "like": ..., "not in": [...], 
  *   "null": true/false
  * }
  * @endcode
@@ -608,6 +608,10 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         else if (0 == strcmp(op, "le"))
         {
             Append(" AND ").Append(field).Append("<=");
+        }
+        else if (0 == strcmp(op, "not in") && it->value.IsArray())
+        {
+            Append(" AND ").Append(field).Append(" not IN ");
         }
         else
         {
