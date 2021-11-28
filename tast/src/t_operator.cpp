@@ -251,12 +251,13 @@ DEF_TAST(operator_scalar, "handle scalar auto conversion")
     COUT(str == psz, true);
 }
 
-DEF_TAST(operator_append, "tast jsop <<")
+DEF_TAST(operator_append1_array, "tast jsop <<")
 {
     rapidjson::Document doc;
     
     DESC("doc init from default null, then << different type of value");
     COUT(doc.IsNull(), true);
+    doc.SetArray();
     doc << 1 << "abc" << std::string("ABC") << 1.1 << -2;
     {
         rapidjson::Value item(3.14);
@@ -288,20 +289,24 @@ DEF_TAST(operator_append, "tast jsop <<")
     COUT(doc[6].IsObject(), true);
 
     DESC("append operator << internally call assign = operator");
-    doc/0 = 2;
+    // for scalar assignment, doc/0 is also OK as require no allocator
+    JSOP(doc)/0 = 2;
     COUT(doc[0].GetInt(), 2);
-    doc/0 = 3.14;
+    JSOP(doc)/0 = 3.14;
     COUT(doc[0].GetDouble(), 3.14);
-    doc/0 = "3.14";
+    JSOP(doc)/0 = "3.14";
     COUT(doc[0].IsString(), true);
     COUT(doc[0].GetString(), std::string("3.14"));
-    doc/0 = false;
+    COUT((const void*)doc[0].GetString() == (const void*)("3.14"), true);
+    doc/0 = "pi3.14";
+    COUT((const void*)doc[0].GetString() == (const void*)("pi3.14"), true);
+    JSOP(doc)/0 = false;
     COUT(doc[0].IsBool(), true);
     COUT(doc[0].GetBool(), false);
 
     DESC("json value assign has move effect");
     rapidjson::Value item(188);
-    doc/0 = item;
+    JSOP(doc)/0 = item;
     COUT(doc[0].GetInt(), 188);
     COUT(item.IsNull(), true);
 
@@ -312,5 +317,126 @@ DEF_TAST(operator_append, "tast jsop <<")
     COUT(item.IsNull(), false);
     COUT(item.GetInt(), 188);
 
+    COUT(doc);
+}
+
+DEF_TAST(operator_append2_object, "tast jsop(object) <<")
+{
+    rapidjson::Document doc;
+
+    DESC("can only append to array or object, set the target type first");
+    doc << 1 << "str";
+    COUT(doc.IsNull(), true);
+
+    doc.SetObject();
+
+    doc << "aaa" << 1 << "bbb" << 2;
+    COUT(doc.MemberCount(), 2);
+    auto it = doc.MemberBegin();
+    COUT(it->name.IsString(), true);
+    COUT(it->name.GetString(), std::string("aaa"));
+    COUT(it->name.GetString(), "aaa");
+    DESC("literal string key is not copied");
+    COUT((const void*)it->name.GetString() == (const void*)"aaa", true);
+
+    DESC("short string as key");
+    std::string shortStr("short_string");
+    doc << shortStr << 3;
+    it = doc.MemberBegin() + 2;
+    COUT(it->name.GetString(), shortStr);
+    COUT(it->name.GetString() != shortStr.c_str(), true);
+    COUT((const void*)it->name.GetString() == (const void*)&it->name, true);
+
+    DESC("longer string as key");
+    std::string longStr("long_string_long");
+    doc << longStr << 4;
+    it = doc.MemberBegin() + 3;
+    COUT(it->name.GetString(), longStr);
+    COUT(it->name.GetString() != shortStr, true);
+    COUT(it->name.GetString() != (const char*)&it->name, true);
+
+    COUT(doc);
+
+    DESC("fail to append mismatched key-value pair");
+    doc << 5 << 6;
+    COUT(doc.MemberCount(), 4);
+
+    DESC("append key first, and later append value");
+    doc << "ccc";
+    COUT(doc.MemberCount(), 5);
+    it = doc.MemberBegin() + 4;
+    COUT(it->name.GetString(), "ccc");
+    COUT(it->value.IsNull(), true);
+    rapidjson::Value item("later value");
+    doc << item;
+    // this name-value both are literal string const ref
+    COUT(it->value.GetString(), "later value");
+    DESC("appended json value is moved and reset to null");
+    COUT(item.IsNull(), true);
+
+    DESC("pending member value is null but distinguish from normal null");
+    doc.AddMember("ddd", rapidjson::Value(), doc.GetAllocator());
+    COUT(doc.MemberCount(), 6);
+    doc << "eee" << rapidjson::Value();
+    COUT(doc.MemberCount(), 7);
+    doc << "fff" << 8;
+    COUT(doc.MemberCount(), 8);
+
+    COUT(doc);
+}
+
+DEF_TAST(operator_append3_container, "tast jsop << std container")
+{
+    rapidjson::Document doc;
+    std::vector<int> vec{1,2,3,4,5};
+
+    DESC("can assign a std::vector to json, set it array");
+    // doc = vec; //! compile error, can only assign to jsop
+    // JSOP(doc) = vec; //! explain as redeclare doc variable
+    JSOP root(doc);
+    root = vec;
+    COUT(doc.IsArray(), true);
+    COUT(doc.Size(), 5);
+    for (int i = 0; i < 5; ++i)
+    {
+        COUT(doc/i | 0, i+1);
+    }
+    COUT(doc);
+
+    std::map<std::string, int> map{
+        {"aaa", 1}, {"bbb", 2}, {"ccc", 3}, {"ddd", 4}, {"eee",5}
+    };
+
+    DESC("append operator required match type for array or object");
+    doc << map;
+    COUT(doc.IsArray(), true);
+
+    DESC("assign operator can change json type directlly");
+    // JSOP(doc) = map;
+    root = map;
+    COUT(doc.IsObject(), true);
+    COUT(doc.MemberCount(), 5);
+    for (auto& item : map)
+    {
+        COUT(doc/item.first | 0, item.second);
+    }
+    COUT(doc);
+
+    rapidjson::Value jnode;
+    DESC("preapare an array node then append to doc root object");
+    jnode.SetArray();
+    doc*jnode << vec;
+    COUT(jnode.Size(), 5);
+    doc << "fff" << jnode;
+    COUT(doc.MemberCount(), 6);
+    COUT(jnode.IsNull(), true);
+
+    DESC("preapare another object node then append to doc root object");
+    jnode.SetObject();
+    jnode*doc << map;
+    COUT(jnode.MemberCount(), 5);
+    doc << "ggg" << jnode;
+    COUT(doc.MemberCount(), 7);
+    COUT(jnode.IsNull(), true);
     COUT(doc);
 }

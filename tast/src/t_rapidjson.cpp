@@ -157,3 +157,21 @@ DEF_TAST(rapidjson_byte, "tast rapidjson::Value byte layout")
     jDefault.SetObject();
     print_byte(jDefault);
 }
+
+DEF_TAST(rapidjson_ptr48opt, "tast rapidjson 48 bit pointer optimization")
+{
+    COUT(sizeof((void*) 0), 8);
+
+    const char* pShortStr = "literalString";
+    COUT(sizeof(pShortStr), 8);
+    COUT((void*)pShortStr);
+    COUT(pShortStr);
+
+    const void* vptr = pShortStr;
+    uint64_t high = 0xAA00000000000000;
+    COUT((uint64_t)vptr & high, 0);
+    COUT((void*)((uint64_t)vptr | high));
+    // can not add arbitrary high byte to pointer
+    // in rapidjson use macro RAPIDJSON_GETPOINTER to ignore high byte
+    // COUT((const char*)((uint64_t)vptr | high));
+}

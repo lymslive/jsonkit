@@ -287,23 +287,5 @@ COperand COperand::OperatePath(size_t index) const
     }
 }
 
-COperand& COperand::Assign(const char* psz)
-{
-    if (m_pJsonNode && m_pAllocator)
-    {
-        m_pJsonNode->SetString(psz, *m_pAllocator);
-    }
-    return *this;
-}
-
-COperand& COperand::Assign(const std::string& str)
-{
-    if (m_pJsonNode && m_pAllocator)
-    {
-        m_pJsonNode->SetString(str.c_str(), str.size(), *m_pAllocator);
-    }
-    return *this;
-}
-
 } // end of namespace jsonkit
 
