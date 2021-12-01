@@ -41,16 +41,14 @@
 /** create a json operand more quickly */
 #define JSOP jsonkit::COperand
 
-#define AS_INT | 0
-#define AS_DOUBLE | 0.0
-#define AS_STRING | ""
-
 namespace jsonkit
 {
 
 /**************************************************************/
 
-/** extract a scalar json vaue to native cpp type */
+/** extract a scalar json value to native cpp type.
+ * @details may make some auto conversion.
+ * */
 bool scalar_value(const char*& dest, const rapidjson::Value& json);
 bool scalar_value(std::string& dest, const rapidjson::Value& json);
 bool scalar_value(int& dest, const rapidjson::Value& json);
@@ -59,6 +57,18 @@ bool scalar_value(bool& dest, const rapidjson::Value& json);
 bool scalar_value(uint32_t& dest, const rapidjson::Value& json);
 bool scalar_value(int64_t& dest, const rapidjson::Value& json);
 bool scalar_value(uint64_t& dest, const rapidjson::Value& json);
+
+/** extract scalar json value without type conversion. */
+template <typename valueT>
+bool strict_value(valueT& dest, const rapidjson::Value& json)
+{
+    bool match = json.Is<valueT>();
+    if (match)
+    {
+        dest = json.Get<valueT>();
+    }
+    return match;
+}
 
 /** read-only operator can perform directly on json value */
 const rapidjson::Value& operate_path(const rapidjson::Value& json, const char* path);
@@ -490,6 +500,49 @@ bool operator! (const rapidjson::Value& json)
     return &json == &jsonkit::CPathError::value;
 }
 
+/** perform json+nubmer , satisfy commutative law*/
+template <typename valueT>
+typename std::enable_if<std::is_arithmetic<valueT>::value, valueT>::type
+/*valueT*/ operator+ (const rapidjson::Value& json, const valueT& base)
+{
+    return jsonkit::operate_pipe(json, 0) + base;
+}
+
+template <typename valueT>
+typename std::enable_if<std::is_arithmetic<valueT>::value, valueT>::type
+/*valueT*/ operator+ (const valueT& base, const rapidjson::Value& json)
+{
+    return base + jsonkit::operate_pipe(json, 0);
+}
+
+/** perform json+string */
+inline
+std::string operator+(const rapidjson::Value& json, const std::string& base)
+{
+    return  jsonkit::operate_pipe(json, std::string()) + base;
+}
+
+inline
+std::string operator+(const std::string& base, const rapidjson::Value& json)
+{
+    return  base + jsonkit::operate_pipe(json, std::string());
+}
+
+template <typename valueT>
+typename std::enable_if<std::is_arithmetic<valueT>::value, rapidjson::Value&>::type
+/*rapidjson::Value&*/ operator+= (rapidjson::Value& json, const valueT& base)
+{
+    json = json + base;
+    return json;
+}
+
+template <typename valueT>
+valueT& operator+= (valueT& base, const rapidjson::Value& json)
+{
+    base = base + json;
+    return base;
+}
+
 inline
 const rapidjson::Value& operator>> (const rapidjson::Value& json, std::string& dest)
 {
@@ -569,6 +622,17 @@ template <typename valueT>
 valueT operator| (const valueT& defVal, const jsonkit::COperand& json)
 {
     return json.OperatePipe(defVal);
+}
+
+/** append a string postfix to json string value, must wrap with JSOP. */
+inline
+jsonkit::COperand operator+= (jsonkit::COperand json, const std::string& rhs)
+{
+    if (json)
+    {
+        json = (*json) + rhs;
+    }
+    return json;
 }
 
 /** add item to json array, or add pair to json object */
