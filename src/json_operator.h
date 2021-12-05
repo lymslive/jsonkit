@@ -15,8 +15,8 @@
  *   sub_val  = json_root / "subarray/1/value";
  * @endcode
  *
- * conversion operator(|) which is from bit or operator, conver a generic scalar json value to c++ value.
- * mainly int or doule or string.
+ * pipe operator(|) which is from bit or operator, conver a generic scalar json value to c++ value.
+ * mainly int or double or string.
  * example:
  * @code
  *   int i = json | 0;
@@ -34,7 +34,6 @@
 #include <map>
 
 #include "jsonkit_rpdjn.h"
-#include "jsonkit_internal.h" // LOGF dependent
 
 #include "rapidjson/document.h"
 
@@ -128,13 +127,13 @@ public:
         : m_pJsonNode(&doc), m_pAllocator(&(doc.GetAllocator()))
     {}
 
-    COperand(const rapidjson::Value& val, rapidjson::Document::AllocatorType& allocator)
-        : m_pJsonNode(&const_cast<rapidjson::Value&>(val))
+    COperand(rapidjson::Value& val, rapidjson::Document::AllocatorType& allocator)
+        : m_pJsonNode(&val)
         , m_pAllocator(&allocator)
     {}
 
-    COperand(const rapidjson::Value& val)
-        : m_pJsonNode(&const_cast<rapidjson::Value&>(val))
+    explicit COperand(rapidjson::Value& val)
+        : m_pJsonNode(&val)
     {}
 
     /** treat json operand as pointer or interator of underlying json node */
@@ -163,7 +162,7 @@ public:
     /** perform multiply operator(*), jump to new json node, as start base node
      * @note cannot jump to json node with Null value
      * */
-    COperand OperateStar(const rapidjson::Value& val) const
+    COperand OperateStar(rapidjson::Value& val) const
     {
         return val.IsNull() ? Zero() : COperand(&val, m_pAllocator);
     }
@@ -571,31 +570,31 @@ jsonkit::COperand operator/ (const jsonkit::COperand& json, const pathT& path)
 }
 
 inline
-jsonkit::COperand operator* (const jsonkit::COperand& jsop, const rapidjson::Value& val)
+jsonkit::COperand operator* (const jsonkit::COperand& jsop, rapidjson::Value& val)
 {
     return jsop.OperateStar(val);
 }
 
 inline
-jsonkit::COperand operator* (const rapidjson::Value& val, rapidjson::Document::AllocatorType& allocator)
+jsonkit::COperand operator* (rapidjson::Value& val, rapidjson::Document::AllocatorType& allocator)
 {
     return jsonkit::COperand(val, allocator);
 }
 
 inline
-jsonkit::COperand operator* (rapidjson::Document::AllocatorType& allocator, const rapidjson::Value& val)
+jsonkit::COperand operator* (rapidjson::Document::AllocatorType& allocator, rapidjson::Value& val)
 {
     return jsonkit::COperand(val, allocator);
 }
 
 inline
-jsonkit::COperand operator* (const rapidjson::Value& val, rapidjson::Document& doc)
+jsonkit::COperand operator* (rapidjson::Value& val, rapidjson::Document& doc)
 {
     return jsonkit::COperand(val, doc.GetAllocator());
 }
 
 inline
-jsonkit::COperand operator* (rapidjson::Document& doc, const rapidjson::Value& val)
+jsonkit::COperand operator* (rapidjson::Document& doc, rapidjson::Value& val)
 {
     return jsonkit::COperand(val, doc.GetAllocator());
 }

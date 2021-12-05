@@ -468,7 +468,7 @@ DEF_TAST(operator_add, "tast json(jsop) + number(string)")
     str += json;
     COUT(str, "c++ std string;json literal string;");
     DESC("json += str; must operate on jsop with allocator");
-    json += str; 
+    // json += str; //! compile error
     COUT(json.GetString(), "json literal string;");
     doc*json += str;
     COUT(json.GetString(), std::string("json literal string;c++ std string;json literal string;"));
