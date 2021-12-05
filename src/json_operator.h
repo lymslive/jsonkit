@@ -229,6 +229,18 @@ public:
         return *this;
     }
 
+#if 0
+    // when allow c-stlye string, will disable literal string optimization
+    COperand& Assign(const char* str)
+    {
+        if (m_pJsonNode && m_pAllocator)
+        {
+            m_pJsonNode->SetString(str, *m_pAllocator);
+        }
+        return *this;
+    }
+#endif
+
     template <typename valueT> 
     COperand& Assign(const std::vector<valueT>& vec)
     {
@@ -300,7 +312,6 @@ public:
         {
             return *this;
         }
-
         if (m_pJsonNode->IsArray())
         {
             return AppendArray(item);
@@ -309,6 +320,7 @@ public:
         {
             return AppendObject(item);
         }
+        return *this;
     }
 
     template <typename valueT>

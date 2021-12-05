@@ -302,11 +302,13 @@ DEF_TAST(operator_append1_array, "tast jsop <<")
     doc/0 = "pi3.14";
     COUT((const void*)doc[0].GetString() == (const void*)("pi3.14"), true);
 
+#if 0
     const char* psz = "psz3.14";
     // doc/0 = psz; //! compile error
     JSOP(doc)/0 = psz;
     COUT(doc[0].GetString(), std::string("psz3.14"));
     COUT((const void*)doc[0].GetString() == (const void*)("psz3.14"), false);
+#endif
 
     std::string str = "str3.14";
     JSOP(doc)/0 = str;
