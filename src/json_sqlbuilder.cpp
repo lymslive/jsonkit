@@ -182,9 +182,14 @@ bool CSqlBuildBuffer::PutEscape(const char* psz, size_t count)
 
 bool CSqlBuildBuffer::PutValue(const char* psz, size_t count)
 {
-    if (psz == nullptr || count == 0 || *psz == '\0')
+    if (psz == nullptr)
     {
         return false;
+    }
+    else if (count == 0 || *psz == '\0')
+    {
+        Append(SINGLE_QUOTE).Append(SINGLE_QUOTE);
+        return true;
     }
 
     // keep origin string in `` quote, eg. `now()` `null`
@@ -306,7 +311,7 @@ bool CSqlBuildBuffer::PushTable(const rapidjson::Value& json)
 
 bool CSqlBuildBuffer::PushField(const rapidjson::Value& json)
 {
-    if (!json)
+    if (!json || json.IsNull())
     {
         Append('*');
         return true;
@@ -427,6 +432,10 @@ bool CSqlBuildBuffer::DoBatchValue(const rapidjson::Value& json)
  * */
 bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson::Value& head)
 {
+    if (!json.IsArray() || json.Empty())
+    {
+        return false;
+    }
     if (!head.IsArray() || head.Empty())
     {
         return false;
@@ -460,7 +469,7 @@ bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson
 
 bool CSqlBuildBuffer::PushWhere(const rapidjson::Value& json)
 {
-    if (!json)
+    if (!json || json.IsNull())
     {
         return true;
     }
@@ -471,7 +480,7 @@ bool CSqlBuildBuffer::PushWhere(const rapidjson::Value& json)
 
 bool CSqlBuildBuffer::PushHaving(const rapidjson::Value& json)
 {
-    if (!json)
+    if (!json || json.IsNull())
     {
         return true;
     }
@@ -625,7 +634,7 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
 
 bool CSqlBuildBuffer::PushOrder(const rapidjson::Value& json)
 {
-    if (!json)
+    if (!json || json.IsNull())
     {
         return true;
     }
@@ -635,7 +644,7 @@ bool CSqlBuildBuffer::PushOrder(const rapidjson::Value& json)
 
 bool CSqlBuildBuffer::PushGroup(const rapidjson::Value& json)
 {
-    if (!json)
+    if (!json || json.IsNull())
     {
         return true;
     }
@@ -652,7 +661,7 @@ bool CSqlBuildBuffer::PushGroup(const rapidjson::Value& json)
  * */
 bool CSqlBuildBuffer::PushLimit(const rapidjson::Value& json)
 {
-    if (!json)
+    if (!json || json.IsNull())
     {
         return true;
     }
