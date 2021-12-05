@@ -294,12 +294,25 @@ DEF_TAST(operator_append1_array, "tast jsop <<")
     COUT(doc[0].GetInt(), 2);
     JSOP(doc)/0 = 3.14;
     COUT(doc[0].GetDouble(), 3.14);
+
     JSOP(doc)/0 = "3.14";
     COUT(doc[0].IsString(), true);
     COUT(doc[0].GetString(), std::string("3.14"));
     COUT((const void*)doc[0].GetString() == (const void*)("3.14"), true);
     doc/0 = "pi3.14";
     COUT((const void*)doc[0].GetString() == (const void*)("pi3.14"), true);
+
+    const char* psz = "psz3.14";
+    // doc/0 = psz; //! compile error
+    JSOP(doc)/0 = psz;
+    COUT(doc[0].GetString(), std::string("psz3.14"));
+    COUT((const void*)doc[0].GetString() == (const void*)("psz3.14"), false);
+
+    std::string str = "str3.14";
+    JSOP(doc)/0 = str;
+    COUT(doc[0].GetString(), str);
+    COUT((const void*)doc[0].GetString() == (const void*)(str.c_str()), false);
+
     JSOP(doc)/0 = false;
     COUT(doc[0].IsBool(), true);
     COUT(doc[0].GetBool(), false);
