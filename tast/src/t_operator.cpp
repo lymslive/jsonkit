@@ -453,3 +453,55 @@ DEF_TAST(operator_append3_container, "tast jsop << std container")
     COUT(jnode.IsNull(), true);
     COUT(doc);
 }
+
+DEF_TAST(operator_add, "tast json(jsop) + number(string)")
+{
+    rapidjson::Document doc;
+    rapidjson::Value json;
+
+    DESC("json value add with number, if it is also number type");
+    json = 1;
+    int i = json + 1;
+    COUT(i, 2);
+    i = 3 + json;
+    COUT(i, 4);
+    i += json;
+    COUT(i, 5);
+    json += 1;
+    COUT(json.GetInt(), 2);
+
+    DESC("json value add with number, if it is also string type");
+    json = "json literal string;";
+    std::string str("c++ std string;");
+
+    std::string res = str + json;
+    COUT(res, "c++ std string;json literal string;");
+    res = json + str;
+    COUT(res, "json literal string;c++ std string;");
+    str += json;
+    COUT(str, "c++ std string;json literal string;");
+    DESC("json += str; must operate on jsop with allocator");
+    json += str; 
+    COUT(json.GetString(), "json literal string;");
+    doc*json += str;
+    COUT(json.GetString(), std::string("json literal string;c++ std string;json literal string;"));
+
+    DESC("add dismatched json type has no effect");
+    COUT(json.IsString(), true);
+    i = 3 + json;
+    COUT(i, 3);
+    DESC("while += act as = change to target type");
+    json += 1;
+    COUT(json.IsInt(), true);
+    COUT(json.GetInt(), 1);
+    COUT(json + 0, json | 0);
+
+    str = "c++ std string;";
+    res = str + json;
+    COUT(res, str);
+    res = json + str;
+    COUT(res, str);
+    doc*json += str;
+    COUT(json.IsString(), true);
+    COUT(json.GetString(), str);
+}
