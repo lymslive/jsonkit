@@ -186,6 +186,7 @@ public:
         return OperatePipeto(val);
     }
 
+    /** move assignment non-const json: jsop = json; */
     COperand& Assign(rapidjson::Value& val)
     {
         if (m_pJsonNode)
@@ -195,6 +196,7 @@ public:
         return *this;
     }
 
+    /** copy assignment const json: jsop = json; */
     COperand& Assign(const rapidjson::Value& val)
     {
         if (m_pJsonNode)
@@ -204,13 +206,11 @@ public:
         return *this;
     }
 
-    /** can directly assign numeric value to rapidjson::Value.
-     * example:
-     * COperand& Assign(int iVal);
-     * COperand& Assign(double dVal);
-     * */
+    /** number assignment: jsop = number; */
     template <typename valueT> 
-    COperand& Assign(valueT& val)
+    typename std::enable_if<!std::is_pointer<valueT>::value, COperand&>::type
+    // COperand&
+    Assign(valueT& val)
     {
         if (m_pJsonNode)
         {
@@ -219,6 +219,31 @@ public:
         return *this;
     }
 
+    /** jsop = "literal string"; */
+    template <size_t N> 
+    COperand& Assign(const char(&val)[N])
+    {
+        if (m_pJsonNode)
+        {
+            (*m_pJsonNode) = val;
+        }
+        return *this;
+    }
+
+    /** jsop = "C-Style string"; */
+    template <typename strT>
+    typename std::enable_if<std::is_same<strT, const char*>::value, COperand&>::type
+    // COperand&
+    Assign(strT str)
+    {
+        if (m_pJsonNode && m_pAllocator)
+        {
+            m_pJsonNode->SetString(str, *m_pAllocator);
+        }
+        return *this;
+    }
+
+    /** jsop = "std::string"; */
     COperand& Assign(const std::string& str)
     {
         if (m_pJsonNode && m_pAllocator)
@@ -227,18 +252,6 @@ public:
         }
         return *this;
     }
-
-#if 0
-    // when allow c-stlye string, will disable literal string optimization
-    COperand& Assign(const char* str)
-    {
-        if (m_pJsonNode && m_pAllocator)
-        {
-            m_pJsonNode->SetString(str, *m_pAllocator);
-        }
-        return *this;
-    }
-#endif
 
     template <typename valueT> 
     COperand& Assign(const std::vector<valueT>& vec)
