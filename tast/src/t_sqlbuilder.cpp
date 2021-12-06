@@ -58,7 +58,7 @@ DEF_TAST(sql_insert, "build insert sql")
     {
         std::string jsonText = R"json({
     "table": "t_name",
-    "head": ["f_1", "f_2", "f_3"],
+    "field": ["f_1", "f_2", "f_3"],
     "value": [
         ["val-1", "val-2", 333],
         ["val-1.2", "val-2.2", 444]

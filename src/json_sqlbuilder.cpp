@@ -107,7 +107,7 @@ public:
     bool PushField(const rapidjson::Value& json);
 
     bool PushSetValue(const rapidjson::Value& json);
-    bool PushSetValue(const rapidjson::Value& json, const rapidjson::Value& head);
+    bool PushSetValue(const rapidjson::Value& json, const rapidjson::Value& field);
     bool DoSetValue(const rapidjson::Value& json);
     bool DoBatchValue(const rapidjson::Value& json);
 
@@ -428,22 +428,22 @@ bool CSqlBuildBuffer::DoBatchValue(const rapidjson::Value& json)
 
 /** Generate: (field1, feild2, ...) VALUES (value1, value2, ...), ...
  * @param json: array of array which has the same fields order
- * @param head: array of string specify the field names
+ * @param field: array of string specify the field names
  * */
-bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson::Value& head)
+bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson::Value& field)
 {
     if (!json.IsArray() || json.Empty())
     {
         return false;
     }
-    if (!head.IsArray() || head.Empty())
+    if (!field.IsArray() || field.Empty())
     {
         return false;
     }
 
     Append(' ');
     Append('(');
-    SQL_ASSERT(PutWord(head));
+    SQL_ASSERT(PutWord(field));
     Append(')');
 
     Append(" VALUES ");
@@ -453,7 +453,7 @@ bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson
         {
             continue;
         }
-        if (it->Size() != head.Size())
+        if (it->Size() != field.Size())
         {
             return false;
         }
@@ -709,10 +709,10 @@ bool CSqlBuildBuffer::DoInsert(const rapidjson::Value& json)
 
     SQL_ASSERT(PushTable(table));
 
-    auto& head = json/"head";
-    if (!!head)
+    auto& field = json/"field";
+    if (!!field)
     {
-        SQL_ASSERT(PushSetValue(value, head));
+        SQL_ASSERT(PushSetValue(value, field));
     }
     else
     {
