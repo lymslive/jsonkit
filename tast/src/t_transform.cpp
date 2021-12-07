@@ -61,7 +61,8 @@ DEF_TAST(transform_slot, "fill with slot")
     std::string srcText = R"json({
     "aaa": 1, "bbb":2,
     "ccc": "c11",
-    "ddd": {"eee":7, "fff":8.8}
+    "ddd": {"eee":7, "fff":8.8},
+    "eee": [1,2,3]
 })json";
 
     std::string dstText = R"json({
@@ -73,15 +74,14 @@ DEF_TAST(transform_slot, "fill with slot")
     "DDD": {
         "EEE": "=ADD",
         "FFF": "/ddd/fff"
-    }
+    },
+    "dsize": "=JSON_SIZEFY/ddd",
+    "esize": "=JSON_SIZEFY/eee",
+    "estr": "=JSON_STRINGFY/eee"
 })json";
 
-    // register slot function
-    bool succ = jsonkit::slot_register("ADD", add_one);
-    COUT(succ, true);
-    // should not register with the same name
-    succ = jsonkit::slot_register("ADD", add_one);
-    COUT(succ, false);
+    DESC("register slot function: ADD");
+    jsonkit::slot_register("ADD", add_one);
 
     rapidjson::Document docSrc;
     docSrc.Parse(srcText.c_str(), srcText.size());
@@ -102,6 +102,13 @@ DEF_TAST(transform_slot, "fill with slot")
     COUT(docDst/"ddd"/"eee" | 0, 7);
     COUT(docDst/"DDD"/"EEE" | 0, 8);
     COUT(docDst/"DDD"/"FFF" | 0.0, 8.8);
+
+    DESC("directly use pre-defined slot: JSON_SIZEFY");
+    COUT(docDst/"dsize" | 0, 2);
+    COUT(docDst/"esize" | 0, 3);
+
+    DESC("directly use pre-defined slot: JSON_STRINGFY");
+    COUT(docDst/"estr" | std::string(), "[1,2,3]");
 }
 
 DEF_TAST(transform_array2object_1, "test array2object, one level")
