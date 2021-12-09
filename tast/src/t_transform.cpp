@@ -111,6 +111,116 @@ DEF_TAST(transform_slot, "fill with slot")
     COUT(docDst/"estr" | std::string(), "[1,2,3]");
 }
 
+DEF_TAST(transform_fill_array1, "fill with array")
+{
+    std::string srcText = R"json({
+    "aaa": 1, "bbb":2,
+    "ccc": "c11",
+    "ddd": {"eee":7, "fff":8.8},
+    "eee": [1,2,3],
+    "fff": [4,5,6,7]
+})json";
+
+    std::string dstText = R"json({
+    "AAA": "static",
+    "array": ["/aaa","/bbb","/ddd/eee","normal"], 
+    "aofa": ["=[?]", ["/aaa", "/eee/?"]],
+    "aofo": ["={?}", {
+       "aaa": "/aaa",
+       "eee": "/eee/?"
+    }],
+    "aofo2": ["={?}", {
+       "eee": "/eee/?",
+       "fff": "/fff/?"
+    }],
+    "aofn": ["=[?]", ["/aaa", "/bbb"]]
+})json";
+
+    rapidjson::Document docSrc;
+    docSrc.Parse(srcText.c_str(), srcText.size());
+    COUT(docSrc.HasParseError(), false);
+
+    rapidjson::Document docDst;
+    docDst.Parse(dstText.c_str(), dstText.size());
+    COUT(docDst.HasParseError(), false);
+
+    COUT(jsonkit::stringfy(docSrc));
+    COUT(jsonkit::stringfy(docDst));
+    jsonkit::merge_fill(docSrc, docDst, docDst.GetAllocator());
+    COUT(jsonkit::stringfy(docDst));
+
+    COUT((docDst/"array").IsArray(), true);
+    COUT((docDst/"array").Size(), 4);
+    COUT(docDst/"array"/0 | 0, 1);
+    COUT(docDst/"array"/1 | 0, 2);
+    COUT(docDst/"array"/2 | 0, 7);
+
+    COUT((docDst/"aofa").IsArray(), true);
+    COUT((docDst/"aofa"/0).IsArray(), true);
+    COUT((docDst/"aofa"/0/0) | 0, 1);
+    COUT((docDst/"aofa"/0/1) | 0, 1);
+    COUT((docDst/"aofa"/1/0) | 0, 1);
+    COUT((docDst/"aofa"/1/1) | 0, 2);
+    COUT((docDst/"aofa"/2/0) | 0, 1);
+    COUT((docDst/"aofa"/2/1) | 0, 3);
+
+    COUT((docDst/"aofo").IsArray(), true);
+    COUT((docDst/"aofo"/0).IsObject(), true);
+    COUT((docDst/"aofo"/0/"aaa") | 0, 1);
+    COUT((docDst/"aofo"/0/"eee") | 0, 1);
+    COUT((docDst/"aofo"/1/"aaa") | 0, 1);
+    COUT((docDst/"aofo"/1/"eee") | 0, 2);
+    COUT((docDst/"aofo"/2/"aaa") | 0, 1);
+    COUT((docDst/"aofo"/2/"eee") | 0, 3);
+
+    COUT((docDst/"aofo2").IsArray(), true);
+    COUT((docDst/"aofo2"/0).IsObject(), true);
+    COUT((docDst/"aofo2"/0/"fff") | 0, 4);
+    COUT((docDst/"aofo2"/0/"eee") | 0, 1);
+    COUT((docDst/"aofo2"/1/"fff") | 0, 5);
+    COUT((docDst/"aofo2"/1/"eee") | 0, 2);
+    COUT((docDst/"aofo2"/2/"fff") | 0, 6);
+    COUT((docDst/"aofo2"/2/"eee") | 0, 3);
+
+    DESC("no ? in array expansion!!");
+    COUT((docDst/"aofn").IsArray(), true);
+    COUT((docDst/"aofn").Size(), 0);
+}
+
+DEF_TAST(transform_fill_array2, "fill with longer array")
+{
+    std::string srcText = R"json({
+    "aaa": [1,2,3,4,5,6,7,8,9,10,11,12],
+    "bbb": [-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11,-12]
+})json";
+
+    std::string dstText = R"json({
+    "aofa": ["=[?]", ["/aaa/?", "/bbb/?"]]
+})json";
+
+    rapidjson::Document docSrc;
+    docSrc.Parse(srcText.c_str(), srcText.size());
+    COUT(docSrc.HasParseError(), false);
+
+    rapidjson::Document docDst;
+    docDst.Parse(dstText.c_str(), dstText.size());
+    COUT(docDst.HasParseError(), false);
+
+    COUT(jsonkit::stringfy(docSrc));
+    COUT(jsonkit::stringfy(docDst));
+    jsonkit::merge_fill(docSrc, docDst, docDst.GetAllocator());
+    COUT(jsonkit::stringfy(docDst));
+
+    COUT((docDst/"aofa").IsArray(), true);
+    COUT((docDst/"aofa").Size(), 12);
+    COUT((docDst/"aofa"/0).IsArray(), true);
+    COUT((docDst/"aofa"/0/0) | 0, 1);
+    COUT((docDst/"aofa"/0/1) | 0, -1);
+    COUT((docDst/"aofa"/10).IsArray(), true);
+    COUT((docDst/"aofa"/10/0) | 0, 11);
+    COUT((docDst/"aofa"/10/1) | 0, -11);
+}
+
 DEF_TAST(transform_array2object_1, "test array2object, one level")
 {
     DESC("lift one level key");

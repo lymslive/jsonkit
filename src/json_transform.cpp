@@ -93,78 +93,219 @@ public:
     }
 
 private:
-    void doTransform (const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
+    // perform the transform, return the count of node that have transformed
+    bool doTransform (const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
+
+    // transform a unit dst when it is string
+    // return true if transform actually take effect, otherwise false
+    bool itemTransform(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
+
+    // expand dst to array of array or array of object, which wild `?` in path
+    bool expandArray(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator);
 };
 
-void CPathFiller::doTransform (const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+bool CPathFiller::itemTransform(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
 {
+    const char* pszVal = dst.GetString();
+    if (!pszVal || *pszVal == '\0')
+    {
+        return false;
+    }
+    char leader = pszVal[0];
+    if (leader == '/')
+    {
+        // "dst": "/path/in/src"
+        const char* path = pszVal;
+        auto& newVal = src/path;
+        if (!newVal)
+        {
+            LOGF("can not find `src` json path: %s", path);
+            dst.SetNull();
+            return false;
+        }
+        else
+        {
+            dst.CopyFrom(newVal, allocator);
+        }
+    }
+    else if (leader == '=')
+    {
+        std::string slotName;
+        const char* pSlash = strchr(pszVal+1, '/');
+        if (pSlash)
+        {
+            slotName.assign(pszVal+1, pSlash);
+        }
+        else
+        {
+            slotName.assign(pszVal+1);
+        }
+        auto fnSlot = slot_retrieve(slotName);
+        if (fnSlot)
+        {
+            if (pSlash)
+                // "dst": "=slotName/path/to/src"
+            {
+                fnSlot(src/pSlash, dst, allocator);
+            }
+            else
+            {
+                // "dst": "=slotName"
+                fnSlot(src, dst, allocator);
+            }
+        }
+        else
+        {
+            LOGF("no valid slot function registed: %s", slotName.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CPathFiller::doTransform(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+{
+    int count = 0;
     if (dst.IsString())
     {
-        const char* pszVal = dst.GetString();
-        if (!pszVal || *pszVal == '\0')
-        {
-            return;
-        }
-        char leader = pszVal[0];
-        if (leader == '/')
-        {
-            const char* path = pszVal;
-            auto& newVal = src/path;
-            if (!newVal)
-            {
-                LOGF("can not find `src` json path: %s", path);
-                dst.SetNull();
-            }
-            else
-            {
-                dst.CopyFrom(newVal, allocator);
-            }
-        }
-        else if (leader == '=')
-        {
-            std::string slotName;
-            const char* pSlash = strchr(pszVal+1, '/');
-            if (pSlash)
-            {
-                slotName.assign(pszVal+1, pSlash);
-            }
-            else
-            {
-                slotName.assign(pszVal+1);
-            }
-            auto fnSlot = slot_retrieve(slotName);
-            if (fnSlot)
-            {
-                // "it->value": "=slotName/path/to/src"
-                if (pSlash)
-                {
-                    fnSlot(src/pSlash, dst, allocator);
-                }
-                else
-                {
-                    fnSlot(src, dst, allocator);
-                }
-            }
-            else
-            {
-                LOGF("no valid slot function registed: %s", slotName.c_str());
-            }
-        }
+        return itemTransform(src, dst, allocator);
     }
     else if (dst.IsObject() && !dst.ObjectEmpty())
     {
         for (auto it = dst.MemberBegin(); it != dst.MemberEnd(); ++it)
         {
-            doTransform(src, it->value, allocator);
+            if (false == doTransform(src, it->value, allocator)) 
+            {
+                return false;
+            }
         }
     }
     else if (dst.IsArray() && !dst.Empty())
     {
+        if (dst[0].IsString() && dst.Size() == 2)
+        {
+            const char* first = dst[0].GetString();
+            if (0 == strcmp(first, "=[?]") && dst[1].IsArray())
+            {
+                // "dst": ["=[?]", [array template]]
+                return expandArray(src, dst, allocator);
+            }
+            else if (0 == strcmp(first, "={?}") && dst[1].IsObject())
+            {
+                // "dst": ["={?}", {object template}]
+                return expandArray(src, dst, allocator);
+            }
+        }
+
         for (auto it = dst.Begin(); it != dst.End(); ++it)
         {
-            doTransform(src, *it, allocator);
+            if (false == doTransform(src, *it, allocator))
+            {
+                return false;
+            }
         }
     }
+    return true;
+}
+
+namespace helper
+{
+// "some string with ?" replace '?' with index
+// return the count of `?` replaced
+int replace_index(int index, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+{
+    if (!dst.IsString() || 0 == dst.GetStringLength())
+    {
+        return 0;
+    }
+    char* begin = const_cast<char*>(dst.GetString());
+    char* pos = strchr(begin, '?');
+    if (pos == nullptr)
+    {
+        return 0;
+    }
+
+    int count = 0;
+    if (index >= 0 && index <= 9)
+    {
+        // modify string in-place, as only modify one byte
+        do
+        {
+            *pos = '0' + index;
+            pos = strchr(pos, '?');
+            ++count;
+        } while(pos != nullptr);
+    }
+    else
+    {
+        std::string str;
+        std::string val = std::to_string(index);
+        do
+        {
+            str.append(begin, pos);
+            str.append(val);
+            begin = pos + 1;
+            pos = strchr(begin, '?');
+            ++count;
+        } while(pos != nullptr);
+        if (*begin != '\0')
+        {
+            str.append(begin);
+        }
+        dst.SetString(str.c_str(), str.size(), allocator);
+    }
+    return count;
+}
+
+} /* namespace helper */ 
+
+bool CPathFiller::expandArray(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
+{
+    auto& base = dst[1];
+    dst.SetArray();
+    if (base.IsArray() && base.Empty()
+            || base.IsObject() && base.ObjectEmpty())
+    {
+        return false;
+    }
+
+    int index = 0;
+    rapidjson::Value row;
+    while(1)
+    {
+        row.CopyFrom(base, allocator);
+        int replace_count = 0;
+        if (row.IsArray())
+        {
+            for (auto it = row.Begin(); it != row.End(); ++it)
+            {
+                replace_count += helper::replace_index(index, *it, allocator);
+            }
+        }
+        else if (row.IsObject())
+        {
+            for (auto it = row.MemberBegin(); it != row.MemberEnd(); ++it)
+            {
+                replace_count += helper::replace_index(index, it->value, allocator);
+            }
+        }
+        if (replace_count <= 0)
+        {
+            // simply protect not indefinite loop
+            return false;
+        }
+
+        // LOGF("before transform row: %s", jsonkit::stringfy(row).c_str());
+        if (false == doTransform(src, row, allocator))
+        {
+            break;
+        }
+        // LOGF("after transform row: %s", jsonkit::stringfy(row).c_str());
+        dst.PushBack(row, allocator);
+        ++index;
+    }
+
+    return index > 0;
 }
 
 void merge(const rapidjson::Value& src, rapidjson::Value& dst, rapidjson::Document::AllocatorType& allocator)
