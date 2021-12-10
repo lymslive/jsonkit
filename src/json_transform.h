@@ -31,6 +31,12 @@ typedef std::function<void(const rapidjson::Value& src, rapidjson::Value& dst, r
  * */
 void slot_register(const std::string& name, json_slot_fn slot);
 
+/** retrive a slot function by name
+ * @note where there is no slot function registered with name, the returned
+ * function is invalid and can be checked by operator bool(), which is false.
+ * */
+json_slot_fn slot_retrieve(const std::string& name);
+
 /** interface functor
  * @details just define a concept, can derive from it, but not defined virtual
  * method.

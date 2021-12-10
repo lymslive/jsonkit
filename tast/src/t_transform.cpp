@@ -3,7 +3,7 @@
 #include "json_operator.h"
 #include "json_input.h"
 
-DEF_TAST(transform_fill, "fill from template")
+DEF_TAST(transform_fill_1, "fill from template")
 {
     std::string srcText = R"json({
     "aaa": 1, "bbb":2,
@@ -41,6 +41,49 @@ DEF_TAST(transform_fill, "fill from template")
     COUT(docDst/"ccc" | "", std::string("c11"));
     COUT(docDst/"ddd"/"eee" | 0, 7);
     COUT(docDst/"DDD"/"EEE" | 0, 7);
+    COUT(docDst/"DDD"/"FFF" | 0.0, 8.8);
+}
+
+DEF_TAST(transform_fill_2, "fill from template with absent path")
+{
+    std::string srcText = R"json({
+    "aaa": 1, "bbb":2,
+    "ccc": "c11",
+    "ddd": {"eee":7, "fff":8.8}
+})json";
+
+    std::string dstText = R"json({
+    "AAA": "/AAA",
+    "aaa": "/aaa", 
+    "bbb": "/bbb",
+    "ccc": "/CCC",
+    "ddd": "/ddd",
+    "DDD": {
+        "EEE": "/ddd/EEE",
+        "FFF": "/ddd/fff"
+    }
+})json";
+
+    rapidjson::Document docSrc;
+    docSrc.Parse(srcText.c_str(), srcText.size());
+    COUT(docSrc.HasParseError(), false);
+
+    rapidjson::Document docDst;
+    docDst.Parse(dstText.c_str(), dstText.size());
+    COUT(docDst.HasParseError(), false);
+
+    COUT(jsonkit::stringfy(docSrc));
+    COUT(jsonkit::stringfy(docDst));
+    jsonkit::merge_fill(docSrc, docDst, docDst.GetAllocator());
+    COUT(jsonkit::stringfy(docDst));
+
+    DESC("absent path will filled with null value");
+    COUT((docDst/"AAA").IsNull(), true);
+    COUT(docDst/"aaa" | 0, 1);
+    COUT(docDst/"bbb" | 0, 2);
+    COUT((docDst/"ccc").IsNull(), true);
+    COUT(docDst/"ddd"/"eee" | 0, 7);
+    COUT((docDst/"DDD"/"EEE").IsNull(), true);
     COUT(docDst/"DDD"/"FFF" | 0.0, 8.8);
 }
 

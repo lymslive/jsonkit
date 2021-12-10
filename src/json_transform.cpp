@@ -77,7 +77,6 @@ void slot_register(const std::string& name, json_slot_fn slot)
     slot::CManager::Instance().RegisterSlot(name, slot);
 }
 
-inline
 json_slot_fn slot_retrieve(const std::string& name)
 {
     return slot::CManager::Instance().RetrieveSlot(name);
@@ -176,7 +175,9 @@ bool CPathFiller::doTransform(const rapidjson::Value& src, rapidjson::Value& dst
         {
             if (false == doTransform(src, it->value, allocator)) 
             {
-                return false;
+                ++count;
+                // tolerate when not expand array
+                // return false;
             }
         }
     }
@@ -201,11 +202,12 @@ bool CPathFiller::doTransform(const rapidjson::Value& src, rapidjson::Value& dst
         {
             if (false == doTransform(src, *it, allocator))
             {
-                return false;
+                ++count;
+                // return false;
             }
         }
     }
-    return true;
+    return count == 0;
 }
 
 namespace helper
