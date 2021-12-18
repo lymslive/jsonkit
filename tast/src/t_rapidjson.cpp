@@ -6,6 +6,7 @@
  * */
 #include "tinytast.hpp"
 #include "rapidjson/document.h"
+#include "json_operator.h"
 
 DEF_TAST(rapidjson_scalar, "scalar json value in rapidjson")
 {
@@ -174,4 +175,27 @@ DEF_TAST(rapidjson_ptr48opt, "tast rapidjson 48 bit pointer optimization")
     // can not add arbitrary high byte to pointer
     // in rapidjson use macro RAPIDJSON_GETPOINTER to ignore high byte
     // COUT((const char*)((uint64_t)vptr | high));
+}
+
+DEF_TAST(rapidjson_utf, "test utf chinse character")
+{
+    std::string key("姓名");
+    std::string val("张三丰");
+
+    rapidjson::Document doc;
+    doc.SetObject();
+
+    rapidjson::Value jsKey;
+    rapidjson::Value jsVal;
+
+    jsKey.SetString(key.c_str(), key.size(), doc.GetAllocator());
+    jsVal.SetString(val.c_str(), val.size(), doc.GetAllocator());
+    COUT(jsKey.GetString());
+    COUT(jsKey.GetStringLength());
+    COUT(jsVal.GetString());
+    COUT(jsVal.GetStringLength());
+
+    doc.AddMember(jsKey, jsVal, doc.GetAllocator());
+    COUT(doc);
+
 }
