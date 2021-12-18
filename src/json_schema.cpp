@@ -289,8 +289,27 @@ public:
 private:
     bool doValidate(const rapidjson::Value& json, const rapidjson::Value& schema);
 
+    // below json is schema item ...
     bool checkString(const rapidjson::Value& json, const rapidjson::Value& value);
     bool checkNumber(const rapidjson::Value& json, const rapidjson::Value& value);
+    bool checkBool(const rapidjson::Value& json, const rapidjson::Value& value);
+    bool checkObject(const rapidjson::Value& json, const rapidjson::Value& value);
+    bool checkArray(const rapidjson::Value& json, const rapidjson::Value& value);
+
+    bool checkArrayOf(const rapidjson::Value& json, const rapidjson::Value& value, rapidjson::Type type);
+
+    bool checkObjectArray(const rapidjson::Value& json, const rapidjson::Value& value)
+    {
+        return checkArrayOf(json, value, rapidjson::kObjectType);
+    }
+    bool checkNumberArray(const rapidjson::Value& json, const rapidjson::Value& value)
+    {
+        return checkArrayOf(json, value, rapidjson::kNumberType);
+    }
+    bool checkStringArray(const rapidjson::Value& json, const rapidjson::Value& value)
+    {
+        return checkArrayOf(json, value, rapidjson::kStringType);
+    }
 
 private:
     std::string m_path;
@@ -301,6 +320,8 @@ bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Val
 {
     if (!value.IsString())
     {
+        m_error = "NOT STRING";
+        LOGF("invalid json, not string in key: %s", m_path.c_str());
         return false;
     }
 
@@ -346,6 +367,13 @@ bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Val
 
 bool CFlatSchema::checkNumber(const rapidjson::Value& json, const rapidjson::Value& value)
 {
+    if (!value.IsNumber())
+    {
+        m_error = "NOT NUMBER";
+        LOGF("invalid json, not number in key: %s", m_path.c_str());
+        return false;
+    }
+
     // maybe check int64 is enough, for normal case
     if (value.IsInt64())
     {
@@ -362,6 +390,84 @@ bool CFlatSchema::checkNumber(const rapidjson::Value& json, const rapidjson::Val
             return false;
         }
     }
+    return true;
+}
+
+bool CFlatSchema::checkBool(const rapidjson::Value& json, const rapidjson::Value& value)
+{
+    if (!value.IsBool())
+    {
+        m_error = "NOT BOOL";
+        LOGF("invalid json, not bool in key: %s", m_path.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool CFlatSchema::checkObject(const rapidjson::Value& json, const rapidjson::Value& value)
+{
+    if (!value.IsObject())
+    {
+        m_error = "NOT OBJECT";
+        LOGF("invalid json, not object in key: %s", m_path.c_str());
+        return false;
+    }
+    auto& children = json/"children";
+    if (!!children && children.IsArray())
+    {
+        if (!doValidate(value, children))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CFlatSchema::checkArrayOf(const rapidjson::Value& json, const rapidjson::Value& value, rapidjson::Type type)
+{
+    if (!value.IsArray())
+    {
+        m_error = "NOT ARRAY";
+        LOGF("invalid json, not array in key: %s", m_path.c_str());
+        return false;
+    }
+
+    typedef bool (CFlatSchema::* checkFun)(const rapidjson::Value& json, const rapidjson::Value& value);
+    checkFun pmf = nullptr;
+
+    if (type == rapidjson::kObjectType)
+    {
+        pmf = &CFlatSchema::checkObject;
+    }
+    else if (type == rapidjson::kNumberType)
+    {
+        pmf = &CFlatSchema::checkNumber;
+    }
+    else if (type == rapidjson::kStringType)
+    {
+        pmf = &CFlatSchema::checkString;
+    }
+    else
+    {
+        LOGF("not support such array type: %s", m_path.c_str());
+    }
+
+    std::string save_path = m_path;
+    for (int i = 0; i < value.Size(); ++i)
+    {
+        m_path = save_path;
+        m_path.append("/").append(std::to_string(i));
+        if (pmf != nullptr)
+        {
+            bool pass = (this->*pmf)(json, value[i]);
+            if (!pass)
+            {
+                return false;
+            }
+        }
+    }
+
+    m_path.swap(save_path);
     return true;
 }
 
@@ -385,10 +491,6 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
             continue;
         }
         bool required = (*it)/"required" | false;
-        if (!required)
-        {
-            continue;
-        }
         std::string name = (*it)/"name" | "";
         if (name.empty())
         {
@@ -401,15 +503,16 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         auto& value = json/name;
         if (!value)
         {
-            m_error = "NO KEY";
-            LOGF("invalid json, no key: %s", m_path.c_str());
-            return false;
-        }
-
-        // do not check type, as the type may variate
-        if ((*it)/"vartype" | false)
-        {
-            continue;
+            if (required)
+            {
+                m_error = "NO KEY";
+                LOGF("invalid json, no required key: %s", m_path.c_str());
+                return false;
+            }
+            else
+            {
+                continue;
+            }
         }
 
         std::string type = (*it)/"type" | "";
@@ -419,83 +522,70 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         }
         else if (type == "string")
         {
-            if (!value.IsString())
+            if(!checkString(*it, value))
             {
-                m_error = "NOT STRING";
-                LOGF("invalid json, not string in key: %s", m_path.c_str());
                 return false;
             }
-            else if(!checkString(*it, value))
+        }
+        else if (type == "string or array")
+        {
+            if(!checkString(*it, value) && !checkStringArray(*it, value))
             {
                 return false;
             }
         }
         else if (type == "number")
         {
-            if (!value.IsInt64() && !value.IsUint64() && !value.IsDouble())
+            if(!checkNumber(*it, value))
             {
-                m_error = "NOT NUMBER";
-                LOGF("invalid json, not number in key: %s", m_path.c_str());
                 return false;
             }
-            else if(!checkNumber(*it, value))
+        }
+        else if (type == "number or array")
+        {
+            if(!checkNumber(*it, value) && !checkNumberArray(*it, value))
             {
                 return false;
             }
         }
         else if (type == "bool" || type == "boolean")
         {
-            if (!value.IsBool())
+            if(!checkBool(*it, value))
             {
-                m_error = "NOT BOOL";
-                LOGF("invalid json, not bool in key: %s", m_path.c_str());
                 return false;
             }
         }
         else if (type == "object")
         {
-            if (!value.IsObject())
+            if(!checkObject(*it, value))
             {
-                m_error = "NOT OBJECT";
-                LOGF("invalid json, not object in key: %s", m_path.c_str());
                 return false;
-            }
-            auto& children = (*it)/"children";
-            if (!!children && children.IsArray())
-            {
-                if (!doValidate(value, children))
-                {
-                    LOGF("invalid json, invalid nested object in key: %s", name.c_str());
-                    return false;
-                }
             }
         }
-        else if (type == "array")
+        else if (type == "array" || type == "array of object")
         {
-            // array of object
-            if (!value.IsArray())
+            if(!checkObjectArray(*it, value))
             {
-                m_error = "NOT ARRAY";
-                LOGF("invalid json, not object in key: %s", m_path.c_str());
                 return false;
             }
-            auto& children = (*it)/"children";
-            if (!!children && children.IsArray())
+        }
+        else if (type == "array of number")
+        {
+            if(!checkNumberArray(*it, value))
             {
-                int i = 0;
-                for (auto itChild = value.Begin(); itChild != value.End(); ++itChild)
-                {
-                    m_path.append("/").append(std::to_string(i++));
-                    if (!doValidate(*itChild, children))
-                    {
-                        LOGF("invalid json, invalid nested array of object in key: %s", name.c_str());
-                        return false;
-                    }
-                }
+                return false;
+            }
+        }
+        else if (type == "array of string")
+        {
+            if(!checkStringArray(*it, value))
+            {
+                return false;
             }
         }
     }
 
+    m_path.swap(save_path);
     return true;
 }
 
