@@ -39,7 +39,6 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
  * - name: the name of key
  * - required: the key is required or optional, default false
  * - type: the type of key
- * - vartype: the type may be variable, so not check type
  * - minValue: min value for number value
  * - maxValue: max value for number value
  * - minLenght: min length for string value

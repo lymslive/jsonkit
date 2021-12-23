@@ -226,6 +226,11 @@ void map_fn_decode_json(rapidjson::Value& name, rapidjson::Value& value, rapidjs
         return;
     }
     const char* str = value.GetString();
+    if (strcmp(str, "null") == 0)
+    {
+        value.SetNull();
+        return;
+    }
     const char b = str[0];
     const char e = str[value.GetStringLength()-1];
 
