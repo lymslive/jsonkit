@@ -289,27 +289,16 @@ public:
 private:
     bool doValidate(const rapidjson::Value& json, const rapidjson::Value& schema);
 
-    // below json is schema item ...
-    bool checkString(const rapidjson::Value& json, const rapidjson::Value& value);
-    bool checkNumber(const rapidjson::Value& json, const rapidjson::Value& value);
-    bool checkBool(const rapidjson::Value& json, const rapidjson::Value& value);
-    bool checkObject(const rapidjson::Value& json, const rapidjson::Value& value);
-    bool checkArray(const rapidjson::Value& json, const rapidjson::Value& value);
+    typedef bool (CFlatSchema::* checkPMF)(const rapidjson::Value& json, const rapidjson::Value& value);
 
-    bool checkArrayOf(const rapidjson::Value& json, const rapidjson::Value& value, rapidjson::Type type);
+    // check json value against schema item ...
+    bool checkString(const rapidjson::Value& schema, const rapidjson::Value& value);
+    bool checkNumber(const rapidjson::Value& schema, const rapidjson::Value& value);
+    bool checkBool(const rapidjson::Value& schema, const rapidjson::Value& value);
+    bool checkObject(const rapidjson::Value& schema, const rapidjson::Value& value);
+    bool checkArray(const rapidjson::Value& schema, const rapidjson::Value& value);
 
-    bool checkObjectArray(const rapidjson::Value& json, const rapidjson::Value& value)
-    {
-        return checkArrayOf(json, value, rapidjson::kObjectType);
-    }
-    bool checkNumberArray(const rapidjson::Value& json, const rapidjson::Value& value)
-    {
-        return checkArrayOf(json, value, rapidjson::kNumberType);
-    }
-    bool checkStringArray(const rapidjson::Value& json, const rapidjson::Value& value)
-    {
-        return checkArrayOf(json, value, rapidjson::kStringType);
-    }
+    bool checkArrayOf(const rapidjson::Value& schema, const rapidjson::Value& value, checkPMF pmf);
 
     void DefaultError(std::string& str) const;
     void SimpleError(std::string& str) const
@@ -408,7 +397,7 @@ void CFlatSchema::GetError(std::string& out) const
     }
 }
 
-bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Value& value)
+bool CFlatSchema::checkString(const rapidjson::Value& schema, const rapidjson::Value& value)
 {
     if (!value.IsString())
     {
@@ -418,20 +407,20 @@ bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Val
     }
 
     size_t length = value.GetStringLength();
-    size_t max = json/"maxLength" | 0;
+    size_t max = schema/"maxLength" | 0;
     if (max > 0 && length > max)
     {
         m_error = "STRING TOO LARGE";
         return false;
     }
-    size_t min = json/"minLength" | 0;
+    size_t min = schema/"minLength" | 0;
     if (min > 0 && length < min)
     {
         m_error = "STRING TOO SMALL";
         return false;
     }
 
-    auto& pattern = json/"pattern";
+    auto& pattern = schema/"pattern";
     if (!!pattern && pattern.IsString() && pattern.GetStringLength() > 0)
     {
         try
@@ -457,7 +446,7 @@ bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Val
     return true;
 }
 
-bool CFlatSchema::checkNumber(const rapidjson::Value& json, const rapidjson::Value& value)
+bool CFlatSchema::checkNumber(const rapidjson::Value& schema, const rapidjson::Value& value)
 {
     if (!value.IsNumber())
     {
@@ -470,13 +459,13 @@ bool CFlatSchema::checkNumber(const rapidjson::Value& json, const rapidjson::Val
     if (value.IsInt64())
     {
         int64_t max = 0;
-        if (scalar_value(max, json/"maxValue") && value.GetInt64() > max)
+        if (scalar_value(max, schema/"maxValue") && value.GetInt64() > max)
         {
             m_error = "NUMBER TOO LARGE";
             return false;
         }
         int64_t min = 0;
-        if (scalar_value(min, json/"minValue") && value.GetInt64() < min)
+        if (scalar_value(min, schema/"minValue") && value.GetInt64() < min)
         {
             m_error = "NUMBER TOO SMALL";
             return false;
@@ -485,7 +474,7 @@ bool CFlatSchema::checkNumber(const rapidjson::Value& json, const rapidjson::Val
     return true;
 }
 
-bool CFlatSchema::checkBool(const rapidjson::Value& json, const rapidjson::Value& value)
+bool CFlatSchema::checkBool(const rapidjson::Value& schema, const rapidjson::Value& value)
 {
     if (!value.IsBool())
     {
@@ -496,7 +485,7 @@ bool CFlatSchema::checkBool(const rapidjson::Value& json, const rapidjson::Value
     return true;
 }
 
-bool CFlatSchema::checkObject(const rapidjson::Value& json, const rapidjson::Value& value)
+bool CFlatSchema::checkObject(const rapidjson::Value& schema, const rapidjson::Value& value)
 {
     if (!value.IsObject())
     {
@@ -504,7 +493,7 @@ bool CFlatSchema::checkObject(const rapidjson::Value& json, const rapidjson::Val
         LOGF("invalid json, not object in key: %s", m_path.c_str());
         return false;
     }
-    auto& children = json/"children";
+    auto& children = schema/"children";
     if (!!children && children.IsArray())
     {
         if (!doValidate(value, children))
@@ -515,7 +504,7 @@ bool CFlatSchema::checkObject(const rapidjson::Value& json, const rapidjson::Val
     return true;
 }
 
-bool CFlatSchema::checkArrayOf(const rapidjson::Value& json, const rapidjson::Value& value, rapidjson::Type type)
+bool CFlatSchema::checkArrayOf(const rapidjson::Value& schema, const rapidjson::Value& value, checkPMF pmf)
 {
     if (!value.IsArray())
     {
@@ -524,24 +513,10 @@ bool CFlatSchema::checkArrayOf(const rapidjson::Value& json, const rapidjson::Va
         return false;
     }
 
-    typedef bool (CFlatSchema::* checkFun)(const rapidjson::Value& json, const rapidjson::Value& value);
-    checkFun pmf = nullptr;
-
-    if (type == rapidjson::kObjectType)
+    if (pmf == nullptr)
     {
-        pmf = &CFlatSchema::checkObject;
-    }
-    else if (type == rapidjson::kNumberType)
-    {
-        pmf = &CFlatSchema::checkNumber;
-    }
-    else if (type == rapidjson::kStringType)
-    {
-        pmf = &CFlatSchema::checkString;
-    }
-    else
-    {
-        LOGF("not support such array type: %s", m_path.c_str());
+        m_error = "INNER ERROR";
+        return false;
     }
 
     std::string save_path = m_path;
@@ -551,7 +526,7 @@ bool CFlatSchema::checkArrayOf(const rapidjson::Value& json, const rapidjson::Va
         m_path.append("/").append(std::to_string(i));
         if (pmf != nullptr)
         {
-            bool pass = (this->*pmf)(json, value[i]);
+            bool pass = (this->*pmf)(schema, value[i]);
             if (!pass)
             {
                 return false;
@@ -621,7 +596,7 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         }
         else if (type == "string or array")
         {
-            if(!checkString(*it, value) && !checkStringArray(*it, value))
+            if(!checkString(*it, value) && !checkArrayOf(*it, value, &CFlatSchema::checkString))
             {
                 return false;
             }
@@ -635,7 +610,7 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         }
         else if (type == "number or array")
         {
-            if(!checkNumber(*it, value) && !checkNumberArray(*it, value))
+            if(!checkNumber(*it, value) && !checkArrayOf(*it, value, &CFlatSchema::checkNumber))
             {
                 return false;
             }
@@ -656,21 +631,21 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         }
         else if (type == "array" || type == "array of object")
         {
-            if(!checkObjectArray(*it, value))
+            if(!checkArrayOf(*it, value, &CFlatSchema::checkObject))
             {
                 return false;
             }
         }
         else if (type == "array of number")
         {
-            if(!checkNumberArray(*it, value))
+            if(!checkArrayOf(*it, value, &CFlatSchema::checkNumber))
             {
                 return false;
             }
         }
         else if (type == "array of string")
         {
-            if(!checkStringArray(*it, value))
+            if(!checkArrayOf(*it, value, &CFlatSchema::checkString))
             {
                 return false;
             }
