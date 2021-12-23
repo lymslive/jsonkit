@@ -274,6 +274,9 @@ namespace jsonkit
 class CFlatSchema
 {
 public:
+    CFlatSchema(const rapidjson::Value& schema, const rapidjson::Value* format = nullptr)
+        : m_schema(schema), m_format(format) {}
+
     bool Validate(const rapidjson::Value& json, const rapidjson::Value& schema)
     {
         m_path.clear();
@@ -281,10 +284,7 @@ public:
         return doValidate(json, schema);
     }
 
-    void GetError(std::string& str) const
-    {
-        str.append(m_error).append(" ").append(m_path);
-    }
+    void GetError(std::string& str) const;
 
 private:
     bool doValidate(const rapidjson::Value& json, const rapidjson::Value& schema);
@@ -311,10 +311,102 @@ private:
         return checkArrayOf(json, value, rapidjson::kStringType);
     }
 
+    void DefaultError(std::string& str) const;
+    void SimpleError(std::string& str) const
+    {
+        str.append(m_error).append(" ").append(m_path);
+    }
+
 private:
+    // ref to schema
+    const rapidjson::Value& m_schema;
+    // ref to error format config, which is also json
+    const rapidjson::Value* m_format = nullptr;
+    // ref to current path in data json that may be invalid
     std::string m_path;
+    // ref to current schema item
+    const rapidjson::Value* m_sitem;
+    // ref to which key in schema that is not satisfied
+    const char* m_skey = nullptr;
+    // string rep for schema[skey]
+    std::string m_sval;
+
+    // old simple error type string
     std::string m_error;
 };
+
+void CFlatSchema::DefaultError(std::string& str) const
+{
+    str.append("Invalid json in: ").append(m_path).append("; Not satisfy: ");
+    std::string sval = stringfy(m_schema/m_skey);
+    str.append(m_skey).append(" = ").append(m_sval);
+}
+
+void CFlatSchema::GetError(std::string& out) const
+{
+    if (!m_format || !m_sitem || !m_skey)
+    {
+        return SimpleError(out);
+    }
+
+    // error format template
+    // {/name} on {path} is invalid, please check {skey} = {sval}
+    const char* pszTemp = nullptr;
+    pszTemp |= *(m_format) / m_skey;
+
+    if (!pszTemp)
+    {
+        return SimpleError(out);
+    }
+    
+    const char* pLeft = nullptr;
+    const char* pRight = nullptr;
+    for (const char* pHead = pszTemp; *pHead != '\0'; ++pHead)
+    {
+        if (*pHead == '{')
+        {
+            pLeft = pHead;
+            continue;
+        }
+        else if (pLeft != nullptr)
+        {
+            continue;
+        }
+        else if (*pHead != '}')
+        {
+            if (++pLeft >= pHead)
+            {
+                // ignore empty {}
+                pLeft = nullptr;
+                continue;
+            }
+            std::string var(pLeft, pHead);
+            if(var[0] == '/')
+            {
+                auto& jp = (*m_sitem)/var;
+                if (!jp)
+                {
+                    out.append(stringfy(jp));
+                }
+            }
+            else if (var == "path")
+            {
+                out.append(m_path);
+            }
+            else if (var == "skey")
+            {
+                out.append(m_skey);
+            }
+            else if (var == "sval")
+            {
+                out.append(m_sval);
+            }
+
+            pLeft = nullptr;
+        }
+        out.push_back(*pHead);
+    }
+}
 
 bool CFlatSchema::checkString(const rapidjson::Value& json, const rapidjson::Value& value)
 {
@@ -591,13 +683,13 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
 
 bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema)
 {
-    CFlatSchema obj;
+    CFlatSchema obj(schema);
     return obj.Validate(json, schema);
 }
 
 bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema, std::string& error)
 {
-    CFlatSchema obj;
+    CFlatSchema obj(schema);
     bool ret = obj.Validate(json, schema);
     if (!ret)
     {
