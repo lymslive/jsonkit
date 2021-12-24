@@ -33,6 +33,13 @@ std::string stringfy(const rapidjson::Value& json)
     return dest;
 }
 
+/// to_string much like stringfy but no extra "" for string type
+inline
+std::string to_string(const rapidjson::Value& json)
+{
+    return json.IsString() ? json.GetString() : stringfy(json);
+}
+
 } /* jsonkit */ 
 
 #endif /* end of include guard: JSON_OUTPUT_H__ */

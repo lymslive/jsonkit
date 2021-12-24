@@ -48,7 +48,7 @@ bool validate_schema(const rapidjson::Value& inJson, const rapidjson::Value& inS
  * When nested with children, only support object or array of object now.
  * */
 bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema);
-bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema, std::string& error);
+bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema, std::string& error, const rapidjson::Value* format = nullptr);
 
 } /* jsonkit */ 
 

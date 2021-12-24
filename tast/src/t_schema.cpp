@@ -246,7 +246,7 @@ DEF_TAST(schema_flat, "test simple flat schema")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error, "NO KEY /BBB");
+    COUT(error, "INVALID /BBB AGAINST required: true");
 }
 
     DESC("dismatch of non-required key");
@@ -271,7 +271,7 @@ DEF_TAST(schema_flat, "test simple flat schema")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error, "NOT NUMBER /aaa");
+    COUT(error, "INVALID /aaa AGAINST type: number");
 }
 
     DESC("dismatch type of some key value");
@@ -296,7 +296,7 @@ DEF_TAST(schema_flat, "test simple flat schema")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error, "NOT STRING /bbb");
+    COUT(error, "INVALID /bbb AGAINST type: string");
 }
 
 }
@@ -464,7 +464,7 @@ DEF_TAST(schema_flat_child, "test simple flat schema with children")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error, "NOT STRING /ddd/0/eee");
+    COUT(error, "INVALID /ddd/0/eee AGAINST type: string");
 }
 
 }
@@ -677,8 +677,8 @@ DEF_TAST(schema_flat_array3n, "test flat schema: array of number")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error);
-    COUT(error, "NOT ARRAY /bbb");
+    // COUT(error);
+    COUT(error, "INVALID /bbb AGAINST type: array");
 }
 
 DEF_TAST(schema_flat_array4n, "test flat schema: array of number")
@@ -703,8 +703,7 @@ DEF_TAST(schema_flat_array4n, "test flat schema: array of number")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error);
-    COUT(error, "NOT ARRAY /ccc");
+    COUT(error, "INVALID /ccc AGAINST type: array");
 }
 
 DEF_TAST(schema_flat_array5n, "test flat schema: array of number")
@@ -729,8 +728,7 @@ DEF_TAST(schema_flat_array5n, "test flat schema: array of number")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error);
-    COUT(error, "NOT STRING /ccc/1");
+    COUT(error, "INVALID /ccc/1 AGAINST type: string");
 }
 
 DEF_TAST(schema_flat_array6n, "test flat schema: array of number")
@@ -755,8 +753,7 @@ DEF_TAST(schema_flat_array6n, "test flat schema: array of number")
 
     std::string error;
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
-    COUT(error);
-    COUT(error, "NOT NUMBER /ccc/0");
+    COUT(error, "INVALID /ccc/0 AGAINST type: number");
 }
 
 DEF_TAST(schema_flat_regex1, "test flat schema check regexp")
@@ -809,4 +806,202 @@ DEF_TAST(schema_flat_regex2, "test flat schema check regexp")
     COUT(jsonkit::validate_flat_schema(inJson, inSchema, error), false);
     COUT(error);
     COUT(error.empty(), false);
+}
+
+DEF_TAST(schema_flat_format, "test flat schema custome error message")
+{
+    std::string format = R"json({
+    "required": "the field '{/name}' is required in {path}",
+    "type": "the type of '{/name}' should be {sval}",
+    "minLength": "length of {/name} should not less than {sval}",
+    "maxLength": "length of {/name} should not greater than {sval}",
+    "minValue": "value of {/name} should not less than {sval}",
+    "maxValue": "value of {/name} should not greater than {sval}"
+})json";
+    rapidjson::Document docFormat;
+    docFormat.Parse(format.c_str(), format.size());
+    COUT(docFormat.HasParseError(), false);
+
+    DESC("check missing required key");
+{
+    std::string json = R"json({
+    "aaa": 1, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error, &docFormat), false);
+    COUT(error, "the field 'bbb' is required in /bbb");
+    COUT(error.empty(), false);
+}
+
+    DESC("check mismatch type");
+{
+    std::string json = R"json({
+    "aaa": "1", "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error, &docFormat), false);
+    COUT(error, "the type of 'aaa' should be number");
+    COUT(error.empty(), false);
+}
+
+    DESC("check string minLength");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true, "minLength": 4 }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error, &docFormat), false);
+    COUT(error, "length of ccc should not less than 4");
+    COUT(error.empty(), false);
+}
+
+    DESC("check string maxLength");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true, "maxLength": 2 }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error, &docFormat), false);
+    COUT(error, "length of ccc should not greater than 2");
+    COUT(error.empty(), false);
+}
+
+    DESC("check string pattern, no format and use defualt error");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true },
+    { "name": "ccc", "type": "string", "required": true, "pattern": "[a-z]+" }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error, &docFormat), false);
+    COUT(error, "INVALID /ccc AGAINST pattern: [a-z]+");
+    COUT(error.empty(), false);
+}
+
+    DESC("check number minValue");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true, "minValue": 10 },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error, &docFormat), false);
+    COUT(error, "value of bbb should not less than 10");
+    COUT(error.empty(), false);
+}
+
+    DESC("check number maxValue");
+{
+    std::string json = R"json({
+    "aaa": 1, "bbb":2, "ccc": "c11"
+})json";
+
+    std::string schema = R"json([
+    { "name": "aaa", "type": "number", "required": true },
+    { "name": "bbb", "type": "number", "required": true, "maxValue": 1 },
+    { "name": "ccc", "type": "string", "required": true }
+])json";
+
+    rapidjson::Document inJson;
+    inJson.Parse(json.c_str(), json.size());
+    COUT(inJson.HasParseError(), false);
+
+    rapidjson::Document inSchema;
+    inSchema.Parse(schema.c_str(), schema.size());
+    COUT(inSchema.HasParseError(), false);
+
+    std::string error;
+    COUT(jsonkit::validate_flat_schema(inJson, inSchema, error, &docFormat), false);
+    COUT(error, "value of bbb should not greater than 1");
+    COUT(error.empty(), false);
+}
+
 }

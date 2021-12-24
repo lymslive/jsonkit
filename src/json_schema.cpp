@@ -279,8 +279,7 @@ public:
 
     bool Validate(const rapidjson::Value& json, const rapidjson::Value& schema)
     {
-        m_path.clear();
-        m_error.clear();
+        ClearError();
         return doValidate(json, schema);
     }
 
@@ -289,7 +288,7 @@ public:
 private:
     bool doValidate(const rapidjson::Value& json, const rapidjson::Value& schema);
 
-    typedef bool (CFlatSchema::* checkPMF)(const rapidjson::Value& json, const rapidjson::Value& value);
+    typedef bool (CFlatSchema::* checkPMF)(const rapidjson::Value& schema, const rapidjson::Value& value);
 
     // check json value against schema item ...
     bool checkString(const rapidjson::Value& schema, const rapidjson::Value& value);
@@ -299,11 +298,34 @@ private:
     bool checkArray(const rapidjson::Value& schema, const rapidjson::Value& value);
 
     bool checkArrayOf(const rapidjson::Value& schema, const rapidjson::Value& value, checkPMF pmf);
+    bool checkArrayOr(const rapidjson::Value& schema, const rapidjson::Value& value, checkPMF pmf);
 
-    void DefaultError(std::string& str) const;
+    void DefaultError(std::string& str) const
+    {
+        str.append("INVALID ").append(m_path).append(" AGAINST ");
+        str.append(m_skey).append(": ").append(m_sval);
+    }
     void SimpleError(std::string& str) const
     {
         str.append(m_error).append(" ").append(m_path);
+    }
+
+    // report and save error context information
+    bool FalseError(const rapidjson::Value& schema, std::string&& skey, std::string&& sval)
+    {
+        m_sitem = &schema;
+        m_skey = std::move(skey);
+        m_sval = std::move(sval);
+        return false;
+    }
+
+    void ClearError()
+    {
+        m_path.clear();
+        m_sitem = nullptr;
+        m_skey.clear();
+        m_sval.clear();
+        m_error.clear();
     }
 
 private:
@@ -314,9 +336,9 @@ private:
     // ref to current path in data json that may be invalid
     std::string m_path;
     // ref to current schema item
-    const rapidjson::Value* m_sitem;
+    const rapidjson::Value* m_sitem = nullptr;
     // ref to which key in schema that is not satisfied
-    const char* m_skey = nullptr;
+    std::string m_skey;
     // string rep for schema[skey]
     std::string m_sval;
 
@@ -324,18 +346,16 @@ private:
     std::string m_error;
 };
 
-void CFlatSchema::DefaultError(std::string& str) const
-{
-    str.append("Invalid json in: ").append(m_path).append("; Not satisfy: ");
-    std::string sval = stringfy(m_schema/m_skey);
-    str.append(m_skey).append(" = ").append(m_sval);
-}
-
 void CFlatSchema::GetError(std::string& out) const
 {
-    if (!m_format || !m_sitem || !m_skey)
+    if (!m_error.empty())
     {
         return SimpleError(out);
+    }
+
+    if (!m_format || !m_sitem)
+    {
+        return DefaultError(out);
     }
 
     // error format template
@@ -345,11 +365,10 @@ void CFlatSchema::GetError(std::string& out) const
 
     if (!pszTemp)
     {
-        return SimpleError(out);
+        return DefaultError(out);
     }
     
     const char* pLeft = nullptr;
-    const char* pRight = nullptr;
     for (const char* pHead = pszTemp; *pHead != '\0'; ++pHead)
     {
         if (*pHead == '{')
@@ -357,11 +376,11 @@ void CFlatSchema::GetError(std::string& out) const
             pLeft = pHead;
             continue;
         }
-        else if (pLeft != nullptr)
+        else if (pLeft == nullptr)
         {
-            continue;
+            out.push_back(*pHead);
         }
-        else if (*pHead != '}')
+        else if (pLeft != nullptr && *pHead == '}')
         {
             if (++pLeft >= pHead)
             {
@@ -373,9 +392,9 @@ void CFlatSchema::GetError(std::string& out) const
             if(var[0] == '/')
             {
                 auto& jp = (*m_sitem)/var;
-                if (!jp)
+                if (!!jp)
                 {
-                    out.append(stringfy(jp));
+                    out.append(to_string(jp));
                 }
             }
             else if (var == "path")
@@ -393,7 +412,6 @@ void CFlatSchema::GetError(std::string& out) const
 
             pLeft = nullptr;
         }
-        out.push_back(*pHead);
     }
 }
 
@@ -401,23 +419,20 @@ bool CFlatSchema::checkString(const rapidjson::Value& schema, const rapidjson::V
 {
     if (!value.IsString())
     {
-        m_error = "NOT STRING";
         LOGF("invalid json, not string in key: %s", m_path.c_str());
-        return false;
+        return FalseError(schema, "type", "string");
     }
 
     size_t length = value.GetStringLength();
     size_t max = schema/"maxLength" | 0;
     if (max > 0 && length > max)
     {
-        m_error = "STRING TOO LARGE";
-        return false;
+        return FalseError(schema, "maxLength", std::to_string(max));
     }
     size_t min = schema/"minLength" | 0;
     if (min > 0 && length < min)
     {
-        m_error = "STRING TOO SMALL";
-        return false;
+        return FalseError(schema, "minLength", std::to_string(min));
     }
 
     auto& pattern = schema/"pattern";
@@ -430,14 +445,13 @@ bool CFlatSchema::checkString(const rapidjson::Value& schema, const rapidjson::V
             if (!match)
             {
                 LOGF("%s !~ %s", value.GetString(), pattern.GetString());
-                m_error = "STRING NOT MATCH PATTERN";
-                return false;
+                return FalseError(schema, "pattern", pattern.GetString());
             }
         }
         catch (std::regex_error)
         {
             LOGF("PATTERN INVALID: %s", pattern.GetString());
-            m_error = "STRING PATTERN INVALID";
+            // m_error = "STRING PATTERN INVALID";
             // only log, not check
             // return false;
         }
@@ -450,9 +464,7 @@ bool CFlatSchema::checkNumber(const rapidjson::Value& schema, const rapidjson::V
 {
     if (!value.IsNumber())
     {
-        m_error = "NOT NUMBER";
-        LOGF("invalid json, not number in key: %s", m_path.c_str());
-        return false;
+        return FalseError(schema, "type", "number");
     }
 
     // maybe check int64 is enough, for normal case
@@ -461,14 +473,25 @@ bool CFlatSchema::checkNumber(const rapidjson::Value& schema, const rapidjson::V
         int64_t max = 0;
         if (scalar_value(max, schema/"maxValue") && value.GetInt64() > max)
         {
-            m_error = "NUMBER TOO LARGE";
-            return false;
+            return FalseError(schema, "maxValue", std::to_string(max));
         }
         int64_t min = 0;
         if (scalar_value(min, schema/"minValue") && value.GetInt64() < min)
         {
-            m_error = "NUMBER TOO SMALL";
-            return false;
+            return FalseError(schema, "minValue", std::to_string(min));
+        }
+    }
+    if (value.IsDouble())
+    {
+        double max = 0;
+        if (scalar_value(max, schema/"maxValue") && value.GetInt64() > max)
+        {
+            return FalseError(schema, "maxValue", std::to_string(max));
+        }
+        double min = 0;
+        if (scalar_value(min, schema/"minValue") && value.GetInt64() < min)
+        {
+            return FalseError(schema, "minValue", std::to_string(min));
         }
     }
     return true;
@@ -478,9 +501,8 @@ bool CFlatSchema::checkBool(const rapidjson::Value& schema, const rapidjson::Val
 {
     if (!value.IsBool())
     {
-        m_error = "NOT BOOL";
         LOGF("invalid json, not bool in key: %s", m_path.c_str());
-        return false;
+        return FalseError(schema, "type", "bool");
     }
     return true;
 }
@@ -489,9 +511,8 @@ bool CFlatSchema::checkObject(const rapidjson::Value& schema, const rapidjson::V
 {
     if (!value.IsObject())
     {
-        m_error = "NOT OBJECT";
         LOGF("invalid json, not object in key: %s", m_path.c_str());
-        return false;
+        return FalseError(schema, "type", "object");
     }
     auto& children = schema/"children";
     if (!!children && children.IsArray())
@@ -508,9 +529,8 @@ bool CFlatSchema::checkArrayOf(const rapidjson::Value& schema, const rapidjson::
 {
     if (!value.IsArray())
     {
-        m_error = "NOT ARRAY";
         LOGF("invalid json, not array in key: %s", m_path.c_str());
-        return false;
+        return FalseError(schema, "type", "array");
     }
 
     if (pmf == nullptr)
@@ -538,6 +558,21 @@ bool CFlatSchema::checkArrayOf(const rapidjson::Value& schema, const rapidjson::
     return true;
 }
 
+bool CFlatSchema::checkArrayOr(const rapidjson::Value& schema, const rapidjson::Value& value, checkPMF pmf)
+{
+    if (pmf == nullptr)
+    {
+        m_error = "INNER ERROR";
+        return false;
+    }
+    if (value.IsArray())
+    {
+        return checkArrayOf(schema, value, pmf);
+    }
+    return (this->*pmf)(schema, value);
+}
+
+#define VALIDATE(checkor) do { if (!checkor) return false; } while(0)
 bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Value& schema)
 {
     if (!json.IsObject())
@@ -572,9 +607,8 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         {
             if (required)
             {
-                m_error = "NO KEY";
                 LOGF("invalid json, no required key: %s", m_path.c_str());
-                return false;
+                return FalseError(*it, "required", "true");
             }
             else
             {
@@ -589,72 +623,50 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         }
         else if (type == "string")
         {
-            if(!checkString(*it, value))
-            {
-                return false;
-            }
-        }
-        else if (type == "string or array")
-        {
-            if(!checkString(*it, value) && !checkArrayOf(*it, value, &CFlatSchema::checkString))
-            {
-                return false;
-            }
+            VALIDATE(checkString(*it, value));
         }
         else if (type == "number")
         {
-            if(!checkNumber(*it, value))
-            {
-                return false;
-            }
-        }
-        else if (type == "number or array")
-        {
-            if(!checkNumber(*it, value) && !checkArrayOf(*it, value, &CFlatSchema::checkNumber))
-            {
-                return false;
-            }
+            VALIDATE(checkNumber(*it, value));
         }
         else if (type == "bool" || type == "boolean")
         {
-            if(!checkBool(*it, value))
-            {
-                return false;
-            }
+            VALIDATE(checkBool(*it, value));
         }
         else if (type == "object")
         {
-            if(!checkObject(*it, value))
-            {
-                return false;
-            }
+            VALIDATE(checkObject(*it, value));
+        }
+        else if (type == "string or array")
+        {
+            VALIDATE(checkArrayOr(*it, value, &CFlatSchema::checkString));
+        }
+        else if (type == "number or array")
+        {
+            VALIDATE(checkArrayOr(*it, value, &CFlatSchema::checkNumber));
+        }
+        else if (type == "object or array")
+        {
+            VALIDATE(checkArrayOr(*it, value, &CFlatSchema::checkObject));
         }
         else if (type == "array" || type == "array of object")
         {
-            if(!checkArrayOf(*it, value, &CFlatSchema::checkObject))
-            {
-                return false;
-            }
+            VALIDATE(checkArrayOf(*it, value, &CFlatSchema::checkObject));
         }
         else if (type == "array of number")
         {
-            if(!checkArrayOf(*it, value, &CFlatSchema::checkNumber))
-            {
-                return false;
-            }
+            VALIDATE(checkArrayOf(*it, value, &CFlatSchema::checkNumber));
         }
         else if (type == "array of string")
         {
-            if(!checkArrayOf(*it, value, &CFlatSchema::checkString))
-            {
-                return false;
-            }
+            VALIDATE(checkArrayOf(*it, value, &CFlatSchema::checkString));
         }
     }
 
     m_path.swap(save_path);
     return true;
 }
+#undef VALIDATE
 
 bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema)
 {
@@ -662,9 +674,9 @@ bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& 
     return obj.Validate(json, schema);
 }
 
-bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema, std::string& error)
+bool validate_flat_schema(const rapidjson::Value& json, const rapidjson::Value& schema, std::string& error, const rapidjson::Value* format)
 {
-    CFlatSchema obj(schema);
+    CFlatSchema obj(schema, format);
     bool ret = obj.Validate(json, schema);
     if (!ret)
     {
