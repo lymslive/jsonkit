@@ -972,3 +972,79 @@ DEF_TAST(sql_compare, "tast complex compare in where")
     COUT(jsonkit::sql_select(doc, sql), true);
     COUT(sql, sqlExpect);
 }
+
+DEF_TAST(sql_subquery_where, "tast sub query in where")
+{
+    std::string jsonText = R"json({
+    "table": "t_name",
+    "field": "f_want1,f_want2",
+    "where": {
+        "id": [100, 200, 300],
+        "key": {
+            "in": {
+                "table": "t_subtable",
+                "field": "key",
+                "where": {
+                    "cond": 1
+                }
+            }
+        },
+        "date": {
+            "le": "`now()`"
+        }
+    }
+})json";
+
+    COUT(jsonText);
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    std::string sql;
+    std::string sqlExpect = "SELECT f_want1,f_want2 FROM t_name WHERE 1=1 AND id IN (100,200,300) AND key in (SELECT key FROM t_subtable WHERE 1=1 AND cond=1) AND date<=now()";
+    COUT(jsonkit::sql_select(doc, sql), true);
+    COUT(sql, sqlExpect);
+}
+
+DEF_TAST(sql_multable_1, "tast multiply tables")
+{
+    std::string jsonText = R"json({
+    "table": ["t_1", 
+        { "join": "LEFT JOIN", "table": "t_2", "as": "A", "use": "f_key" }
+    ],
+    "where": { "A.id": 100 }
+})json";
+
+    COUT(jsonText);
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    std::string sql;
+    std::string sqlExpect = "SELECT * FROM t_1 LEFT JOIN t_2 AS A USING(f_key) WHERE 1=1 AND A.id=100";
+    COUT(jsonkit::sql_select(doc, sql), true);
+    COUT(sql, sqlExpect);
+}
+
+DEF_TAST(sql_multable_2, "tast sub query tmp tables")
+{
+    std::string jsonText = R"json({
+    "table": ["t_1", 
+        { "join": "LEFT JOIN", "table": {
+            "table": "t_2",
+            "field": ["id", "name", "key"]
+        }, "as": "A", "on": "t_1.key=A.key" }
+    ],
+    "where": { "A.id": 100 }
+})json";
+
+    COUT(jsonText);
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    std::string sql;
+    std::string sqlExpect = "SELECT * FROM t_1 LEFT JOIN (SELECT id,name,key FROM t_2) AS A ON t_1.key=A.key WHERE 1=1 AND A.id=100";
+    COUT(jsonkit::sql_select(doc, sql), true);
+    COUT(sql, sqlExpect);
+}

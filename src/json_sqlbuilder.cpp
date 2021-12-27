@@ -87,6 +87,11 @@ public:
         return *this;
     }
 
+    char TopEnd()
+    {
+        return m_buffer.empty() ? '\0' : m_buffer.back();
+    }
+
     void PopEnd(char ch)
     {
         if (!m_buffer.empty() && m_buffer.back() == ch)
@@ -95,6 +100,19 @@ public:
         }
     }
 
+    void Space()
+    {
+        char end = TopEnd();
+        if (end != ' ' && end != '\0' && end != ',')
+        {
+            Append(' ');
+        }
+    }
+
+    bool PutWord(const char* psz)
+    {
+        return PutWord(psz, strlen(psz));
+    }
     bool PutWord(const char* psz, size_t count);
     bool PutWord(const rapidjson::Value& json);
     bool PutWord(const rapidjson::Value& json, std::string& last);
@@ -272,7 +290,7 @@ bool CSqlBuildBuffer::PutValue(const rapidjson::Value& json)
         Append(')');
         return true;
     }
-    else if (json.IsObject() || json.IsArray())
+    else if (json.IsObject())
     {
         return false;
     }
@@ -305,6 +323,63 @@ bool CSqlBuildBuffer::PushTable(const rapidjson::Value& json)
     if (json.IsString())
     {
         return PutWord(json.GetString(), json.GetStringLength());
+    }
+    else if (json.IsArray())
+    {
+        int idx = 0;
+        for (auto it = json.Begin(); it != json.End(); ++it)
+        {
+            if (idx++ > 0)
+            {
+                Append(' ');
+            }
+            SQL_ASSERT(PushTable(*it));
+        }
+        return true;
+    }
+    else if (json.IsObject())
+    {
+        for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
+        {
+            const char* key = it->name.GetString();
+            if (0 == strcmp(key, "join"))
+            {
+                // the 2nd table or later should specify join type
+                SQL_ASSERT(PutWord(it->value));
+            }
+            else if (0 == strcmp(key, "table"))
+            {
+                // Append(' ');
+                Space();
+                if (it->value.IsObject())
+                {
+                    Append("(");
+                    SQL_ASSERT(Select(it->value));
+                    Append(")");
+                }
+                else
+                {
+                    SQL_ASSERT(PutWord(it->value));
+                }
+            }
+            else if (0 == strcmp(key, "as"))
+            {
+                Append(" AS ");
+                SQL_ASSERT(PutWord(it->value));
+            }
+            else if (0 == strcmp(key, "on"))
+            {
+                Append(" ON ");
+                SQL_ASSERT(PutWord(it->value));
+            }
+            else if (0 == strcmp(key, "use"))
+            {
+                PutWord(" USING(");
+                SQL_ASSERT(PutWord(it->value));
+                Append(")");
+            }
+        }
+        return true;
     }
     return false;
 }
@@ -594,6 +669,19 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
             continue;
         }
 
+        // sub-select query in where
+        if (it->value.IsObject())
+        {
+            Append(" AND ").Append(field).Append(" ");
+            SQL_ASSERT(PutWord(op, it->name.GetStringLength()));
+            Append(" ");
+            Append("(");
+            SQL_ASSERT(Select(it->value));
+            Append(")");
+            continue;
+        }
+
+        // normal comparision
         if (0 == strcmp(op, "eq"))
         {
             Append(" AND ").Append(field).Append('=');
@@ -627,7 +715,7 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
             continue;
         }
 
-        PutValue(it->value);
+        SQL_ASSERT(PutValue(it->value));
     }
     return true;
 }
