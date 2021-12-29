@@ -118,6 +118,8 @@ public:
     bool PutWord(const rapidjson::Value& json, std::string& last);
     bool PutEscape(const char* psz, size_t count);
     bool PutEscape(const rapidjson::Value& json);
+    bool LikeEscape(const char* psz, size_t count);
+    bool LikeEscape(const rapidjson::Value& json);
     bool PutValue(const char* psz, size_t count);
     bool PutValue(const rapidjson::Value& json);
 
@@ -129,8 +131,8 @@ public:
     bool DoSetValue(const rapidjson::Value& json);
     bool DoBatchValue(const rapidjson::Value& json);
 
-    bool DoPushWhere(const rapidjson::Value& json);
-    bool DoCmpWhere(const rapidjson::Value& json, const std::string& field);
+    bool DoPushWhere(const rapidjson::Value& json, const char* relation = nullptr);
+    bool DoCmpWhere(const rapidjson::Value& json, const std::string& field, const char* relation = nullptr);
     bool PushWhere(const rapidjson::Value& json);
     bool PushHaving(const rapidjson::Value& json);
     bool PushGroup(const rapidjson::Value& json);
@@ -198,6 +200,21 @@ bool CSqlBuildBuffer::PutEscape(const char* psz, size_t count)
     return true;
 }
 
+bool CSqlBuildBuffer::LikeEscape(const char* psz, size_t count)
+{
+    std::string metachar = "\\%_?*[]";
+    for (size_t i = 0; i < count; ++i)
+    {
+        char ch = psz[i];
+        if (metachar.find(ch) != std::string::npos)
+        {
+            Append('\\');
+        }
+        Append(ch);
+    }
+    return true;
+}
+
 bool CSqlBuildBuffer::PutValue(const char* psz, size_t count)
 {
     if (psz == nullptr)
@@ -235,6 +252,15 @@ bool CSqlBuildBuffer::PutEscape(const rapidjson::Value& json)
     if (json.IsString())
     {
         return PutEscape(json.GetString(), json.GetStringLength());
+    }
+    return false;
+}
+
+bool CSqlBuildBuffer::LikeEscape(const rapidjson::Value& json)
+{
+    if (json.IsString())
+    {
+        return LikeEscape(json.GetString(), json.GetStringLength());
     }
     return false;
 }
@@ -544,7 +570,7 @@ bool CSqlBuildBuffer::PushSetValue(const rapidjson::Value& json, const rapidjson
 
 bool CSqlBuildBuffer::PushWhere(const rapidjson::Value& json)
 {
-    if (!json || json.IsNull())
+    if (!json || !json.IsObject())
     {
         return true;
     }
@@ -555,7 +581,7 @@ bool CSqlBuildBuffer::PushWhere(const rapidjson::Value& json)
 
 bool CSqlBuildBuffer::PushHaving(const rapidjson::Value& json)
 {
-    if (!json || json.IsNull())
+    if (!json || !json.IsObject())
     {
         return true;
     }
@@ -576,8 +602,13 @@ bool CSqlBuildBuffer::PushHaving(const rapidjson::Value& json)
  * }
  * @endcode 
  * */
-bool CSqlBuildBuffer::DoPushWhere(const rapidjson::Value& json)
+bool CSqlBuildBuffer::DoPushWhere(const rapidjson::Value& json, const char* relation)
 {
+    if (relation == nullptr)
+    {
+        relation = " AND ";
+    }
+
     for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
     {
         if (it->value.IsNull())
@@ -591,16 +622,25 @@ bool CSqlBuildBuffer::DoPushWhere(const rapidjson::Value& json)
 
         if (it->value.IsArray())
         {
-            Append( " AND ").Append(field).Append(" IN ");
+            Append(relation).Append(field).Append(" IN ");
             SQL_ASSERT(PutValue(it->value));
         }
         else if (it->value.IsObject())
         {
-            SQL_ASSERT(DoCmpWhere(it->value, field));
+            if (field == "-or")
+            {
+                Append(" AND (1!=1");
+                SQL_ASSERT(DoPushWhere(it->value, " OR "));
+                Append(")");
+            }
+            else
+            {
+                SQL_ASSERT(DoCmpWhere(it->value, field, relation));
+            }
         }
         else
         {
-            Append( " AND ").Append(field).Append('=');
+            Append(relation).Append(field).Append('=');
             SQL_ASSERT(PutValue(it->value));
         }
     }
@@ -617,8 +657,12 @@ bool CSqlBuildBuffer::DoPushWhere(const rapidjson::Value& json)
  * }
  * @endcode
  * */
-bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string& field)
+bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string& field, const char* relation)
 {
+    if (relation == nullptr)
+    {
+        relation = " AND ";
+    }
     for (auto it = json.MemberBegin(); it != json.MemberEnd(); ++it)
     {
         if (it->value.IsNull())
@@ -629,13 +673,20 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         const char* op = it->name.GetString();
         if (0 == strcmp(op, "like"))
         {
-            Append(" AND ").Append(field).Append(" like ");
+            Append(relation).Append(field).Append(" like ");
             Append(SINGLE_QUOTE);
             if (m_pConfig->fix_like_value & SQL_LIKE_PREFIX)
             {
                 Append('%');
             }
-            SQL_ASSERT(PutEscape(it->value));
+            if (m_pConfig->escape_like_metachar)
+            {
+                SQL_ASSERT(LikeEscape(it->value));
+            }
+            else
+            {
+                SQL_ASSERT(PutEscape(it->value));
+            }
             if (m_pConfig->fix_like_value & SQL_LIKE_POSTFIX)
             {
                 Append('%');
@@ -648,9 +699,9 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         {
             if (it->value.IsArray() && it->value.Size() == 2)
             {
-                Append(" AND ").Append(field).Append(" BETWEEN ");
+                Append(relation).Append(field).Append(" BETWEEN ");
                 SQL_ASSERT(PutValue(it->value[0]));
-                Append(" AND ");
+                Append(relation);
                 SQL_ASSERT(PutValue(it->value[1]));
             }
             continue;
@@ -660,11 +711,11 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         {
             if (it->value.IsBool() && it->value.GetBool())
             {
-                Append(" AND ").Append(field).Append(" is NULL");
+                Append(relation).Append(field).Append(" is NULL");
             }
             else
             {
-                Append(" AND ").Append(field).Append(" is not NULL");
+                Append(relation).Append(field).Append(" is not NULL");
             }
             continue;
         }
@@ -672,7 +723,7 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         // sub-select query in where
         if (it->value.IsObject())
         {
-            Append(" AND ").Append(field).Append(" ");
+            Append(relation).Append(field).Append(" ");
             SQL_ASSERT(PutWord(op, it->name.GetStringLength()));
             Append(" ");
             Append("(");
@@ -684,31 +735,31 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         // normal comparision
         if (0 == strcmp(op, "eq"))
         {
-            Append(" AND ").Append(field).Append('=');
+            Append(relation).Append(field).Append('=');
         }
         else if (0 == strcmp(op, "gt"))
         {
-            Append(" AND ").Append(field).Append('>');
+            Append(relation).Append(field).Append('>');
         }
         else if (0 == strcmp(op, "lt"))
         {
-            Append(" AND ").Append(field).Append('<');
+            Append(relation).Append(field).Append('<');
         }
         else if (0 == strcmp(op, "ne"))
         {
-            Append(" AND ").Append(field).Append("!=");
+            Append(relation).Append(field).Append("!=");
         }
         else if (0 == strcmp(op, "ge"))
         {
-            Append(" AND ").Append(field).Append(">=");
+            Append(relation).Append(field).Append(">=");
         }
         else if (0 == strcmp(op, "le"))
         {
-            Append(" AND ").Append(field).Append("<=");
+            Append(relation).Append(field).Append("<=");
         }
         else if (0 == strcmp(op, "not in") && it->value.IsArray())
         {
-            Append(" AND ").Append(field).Append(" not IN ");
+            Append(relation).Append(field).Append(" not IN ");
         }
         else
         {

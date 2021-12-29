@@ -25,6 +25,9 @@ struct sql_config_t
      * can bit or of SQL_LIKE_POSTFIX, SQL_LIKE_PREFIX */
     short fix_like_value = SQL_LIKE_POSTFIX;
 
+    /** escape meta char (eg: %_?*[]) in like expression */
+    bool escape_like_metachar = false;
+
     /** not generate delete sql if without where clause */
     bool refuse_delete_without_where = true;
 

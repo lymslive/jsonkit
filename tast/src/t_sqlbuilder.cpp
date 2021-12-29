@@ -760,7 +760,7 @@ std::string jsonText = R"json({
     "table": "t_name",
     "where": {
         "name": {
-           "like": "abc"
+           "like": "ab_c"
         }
     }
 })json";
@@ -771,7 +771,7 @@ std::string jsonText = R"json({
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND name like 'abc%'";
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND name like 'ab_c%'";
         COUT(jsonkit::sql_select(doc, sql), true);
         COUT(sql, sqlExpect);
     }
@@ -779,6 +779,7 @@ std::string jsonText = R"json({
     DESC("change config");
     jsonkit::sql_config_t cfg = jsonkit::set_sql_config(nullptr);
     cfg.fix_like_value = jsonkit::SQL_LIKE_POSTFIX | jsonkit::SQL_LIKE_PREFIX;
+    cfg.escape_like_metachar = true;
     cfg.refuse_delete_without_where = false;
     cfg.refuse_update_without_where = false;
     // set and save the config
@@ -790,7 +791,7 @@ std::string jsonText = R"json({
     "table": "t_name",
     "where": {
         "name": {
-           "like": "abc"
+           "like": "a%b_c"
         }
     }
 })json";
@@ -801,7 +802,7 @@ std::string jsonText = R"json({
         COUT(doc.HasParseError(), false);
 
         std::string sql;
-        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND name like '%abc%'";
+        std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND name like '%a\\%b\\_c%'";
         COUT(jsonkit::sql_select(doc, sql), true);
         COUT(sql, sqlExpect);
     }
@@ -1045,6 +1046,37 @@ DEF_TAST(sql_multable_2, "tast sub query tmp tables")
 
     std::string sql;
     std::string sqlExpect = "SELECT * FROM t_1 LEFT JOIN (SELECT id,name,key FROM t_2) AS A ON t_1.key=A.key WHERE 1=1 AND A.id=100";
+    COUT(jsonkit::sql_select(doc, sql), true);
+    COUT(sql, sqlExpect);
+}
+
+DEF_TAST(sql_whereor_1, "tast or relation in where")
+{
+    std::string jsonText = R"json({
+    "table": "t_name",
+    "field": "*",
+    "where": {
+        "-or": {
+            "user": 1001,
+            "id": [100, 200, 300],
+            "key": {
+                "gt": 10,
+                "lt": 20
+            }
+        },
+        "date": {
+            "le": "`now()`"
+        }
+    }
+})json";
+
+    COUT(jsonText);
+    rapidjson::Document doc;
+    doc.Parse(jsonText.c_str(), jsonText.size());
+    COUT(doc.HasParseError(), false);
+
+    std::string sql;
+    std::string sqlExpect = "SELECT * FROM t_name WHERE 1=1 AND (1!=1 OR user=1001 OR id IN (100,200,300) OR key>10 OR key<20) AND date<=now()";
     COUT(jsonkit::sql_select(doc, sql), true);
     COUT(sql, sqlExpect);
 }
