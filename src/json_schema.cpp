@@ -603,7 +603,7 @@ bool CFlatSchema::doValidate(const rapidjson::Value& json, const rapidjson::Valu
         m_path.append("/").append(name);
 
         auto& value = json/name;
-        if (!value)
+        if (!value || value.IsNull())
         {
             if (required)
             {
