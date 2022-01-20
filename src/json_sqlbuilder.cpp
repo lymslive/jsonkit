@@ -314,7 +314,8 @@ bool CSqlBuildBuffer::PutValue(const rapidjson::Value& json)
         }
         PopEnd(',');
         Append(')');
-        return true;
+	// empty array got () which may invalid sql
+        return (json.Size() > 0);
     }
     else if (json.IsObject())
     {
@@ -757,7 +758,7 @@ bool CSqlBuildBuffer::DoCmpWhere(const rapidjson::Value& json, const std::string
         {
             Append(relation).Append(field).Append("<=");
         }
-        else if (0 == strcmp(op, "not in") && it->value.IsArray())
+        else if (0 == strcmp(op, "not in") && it->value.IsArray() && it->value.Size() > 0)
         {
             Append(relation).Append(field).Append(" not IN ");
         }
