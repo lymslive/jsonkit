@@ -60,8 +60,9 @@ bool path_point(const std::string& inJson, const std::string& path, std::string&
 bool path_point(const char* inJson, size_t inLen, const std::string& path, std::string& outJson);
 
 #ifdef HAS_GOOGLE_PROBUF
-// convert between json and protobuf
-// the protobuf name must be provided as extra input argument. 
+/// convert between json and protobuf stream.
+/// the protobuf name (full name include package) must be provided as extra input argument. 
+/// return true if the opration successed.
 bool form_protobuf(const std::string& name, const std::string& inJson, std::string& outPbmsg);
 bool from_protobuf(const std::string& name, const std::string& inPbmsg, std::string& outJson);
 #endif

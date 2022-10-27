@@ -18,16 +18,4 @@
 #include "json_schema.h"
 #include "json_compare.h"
 
-namespace jsonkit
-{
-
-#ifdef HAS_GOOGLE_PROBUF
-// convert between json and protobuf
-// the protobuf name must be provided as extra input argument. 
-bool form_protobuf(const std::string& name, const rapidjson::Value& inJson, std::string& outPbmsg);
-bool from_protobuf(const std::string& name, const rapidjson::Value& inPbmsg, std::string& outJson);
-#endif
-
-} /* jsonkit */ 
-
 #endif /* end of include guard: JSONKIT_RPDJN_H__ */

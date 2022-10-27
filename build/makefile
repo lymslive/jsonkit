@@ -16,6 +16,10 @@ else
 CXXFLAGS += -O2
 endif
 
+ifdef protobuf
+CXXFLAGS += -DHAS_GOOGLE_PROBUF
+endif
+
 # for lib target
 ##################################################
 
