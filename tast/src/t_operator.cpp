@@ -343,8 +343,7 @@ DEF_TAST(operator_append2_object, "tast jsop(object) <<")
 
     doc.SetObject();
 
-    doc << "aaa" << 1;
-    doc << "bbb" << 2;
+    doc << "aaa" << 1 << "bbb" << 2;
     COUT(doc.MemberCount(), 2);
     auto it = doc.MemberBegin();
     COUT(it->name.IsString(), true);
