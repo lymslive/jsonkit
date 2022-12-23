@@ -318,7 +318,7 @@ public:
     // Append (for operator <<)
     // can perform on array one by one or object pair by pair
     template <typename valueT>
-    COperand Append(valueT& item) const
+    const COperand& Append(valueT& item) const
     {
         if (!m_pJsonNode || !m_pAllocator)
         {
@@ -336,7 +336,7 @@ public:
     }
 
     template <typename valueT>
-    COperand Append(const std::vector<valueT>& vec) const
+    const COperand& Append(const std::vector<valueT>& vec) const
     {
         if (CanActArray())
         {
@@ -349,7 +349,7 @@ public:
     }
 
     template <typename valueT> 
-    COperand Append(const std::map<std::string, valueT>& kv) const
+    const COperand& Append(const std::map<std::string, valueT>& kv) const
     {
         if (CanActObject())
         {
@@ -362,13 +362,13 @@ public:
     }
 
     template <typename valueT>
-    COperand Append(const std::pair<std::string, valueT>& item) const
+    const COperand& Append(const std::pair<std::string, valueT>& item) const
     {
         return AddMember(item.first, item.second);
     }
 
     template <typename valueT>
-    COperand AddMember(const std::string& key, valueT& value) const
+    const COperand& AddMember(const std::string& key, valueT& value) const
     {
         if (!m_pJsonNode || !m_pAllocator)
         {
@@ -383,7 +383,7 @@ public:
 
 private:
     template <typename valueT>
-    COperand DoAddMember(const std::string& key, valueT& value) const
+    const COperand& DoAddMember(const std::string& key, valueT& value) const
     {
         rapidjson::Value keyNode;
         keyNode.SetString(key.c_str(), key.size(), *m_pAllocator);
@@ -394,7 +394,7 @@ private:
     }
 
     template <typename valueT>
-    COperand AppendArray(valueT& item) const
+    const COperand& AppendArray(valueT& item) const
     {
         rapidjson::Value val;
         COperand(val, *m_pAllocator).Assign(item);
@@ -403,7 +403,7 @@ private:
     }
 
     template <typename valueT>
-    COperand AppendObject(valueT& item) const
+    const COperand& AppendObject(valueT& item) const
     {
         if (m_pJsonNode->ObjectEmpty())
         {
@@ -420,27 +420,33 @@ private:
     }
 
     // append a member with key from provided item, 
-    // pending a specail null value, waiting anothr append
+    // pending a specail null value, waiting another append
     template <typename valueT>
-    COperand AppendMemberKey(valueT& item) const
+    const COperand& AppendMemberKey(valueT& item) const
     {
         rapidjson::Value key;
         COperand(key, *m_pAllocator).Assign(item);
         if (key.IsString())
         {
             rapidjson::Value val;
+            // @note: Can also call SetPendingNull(val) first,
+            // to save little efficiency, 
+            // but depend on the implementation of Addmember().
+            // It is more symmetrical to call on (last->value).
             SetPendingNull(val);
             m_pJsonNode->AddMember(key, val, *m_pAllocator);
+            // auto last = --m_pJsonNode->MemberEnd();
+            // SetPendingNull(last->value);
         }
         return *this;
     }
 
     template <typename valueT>
-    COperand AppendMemberValue(valueT& item) const
+    const COperand& AppendMemberValue(valueT& item) const
     {
         rapidjson::Value val;
         COperand(val, *m_pAllocator).Assign(item);
-        auto& last = --m_pJsonNode->MemberEnd();
+        auto last = --m_pJsonNode->MemberEnd();
         last->value = val;
         return *this;
     }
@@ -448,19 +454,22 @@ private:
     void SetPendingNull(rapidjson::Value& val) const
     {
         val.SetNull();
-        *((int*)&val) = 0x0bcaffed;
+        // *((int*)&val) = 0x0bcaffed;
+        *(reinterpret_cast<int*>(&val)) = 0x0bcaffed;
     }
 
     bool IsPendingNull(rapidjson::Value& val) const
     {
-        return val.IsNull() && (*((int*)&val) == 0x0bcaffed);
+        // return val.IsNull() && (*((int*)&val) == 0x0bcaffed);
+        return val.IsNull() && (*(reinterpret_cast<int*>(&val)) == 0x0bcaffed);
     }
 
     bool ExpectMemberValue() const
     {
-        auto& last = --m_pJsonNode->MemberEnd();
+        auto last = --m_pJsonNode->MemberEnd();
         return IsPendingNull(last->value);
     }
+
 private:
     rapidjson::Value* m_pJsonNode = nullptr;
     rapidjson::Document::AllocatorType* m_pAllocator = nullptr;
@@ -661,13 +670,13 @@ jsonkit::COperand operator+= (jsonkit::COperand json, const std::string& rhs)
 
 /** add item to json array, or add pair to json object */
 template <typename valueT>
-jsonkit::COperand operator<< (const jsonkit::COperand& json, const valueT& val)
+const jsonkit::COperand& operator<< (const jsonkit::COperand& json, const valueT& val)
 {
     return json.Append(val);
 }
 
 inline
-jsonkit::COperand operator<< (const jsonkit::COperand& json, rapidjson::Value& val)
+const jsonkit::COperand& operator<< (const jsonkit::COperand& json, rapidjson::Value& val)
 {
     return json.Append(val);
 }
